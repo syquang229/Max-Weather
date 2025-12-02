@@ -5,7 +5,7 @@ Welcome to the Max Weather Platform documentation!
 ## 📖 Getting Started
 
 ### ⭐ Start Here
-**[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Complete implementation guide
+**[complete_guide.md](complete_guide.md)** - Complete implementation guide
 
 This comprehensive guide includes:
 - Quick Start Guide
@@ -23,14 +23,14 @@ This comprehensive guide includes:
 
 ### Core Setup Guides
 
-1. **[API_GATEWAY_MANUAL_SETUP.md](API_GATEWAY_MANUAL_SETUP.md)**
+1. **[api_gateway_setup.md](api_gateway_setup.md)**
    - Step-by-step API Gateway creation
    - VPC Link configuration
    - Lambda Authorizer attachment
    - Testing and troubleshooting
    - **Time**: 20 minutes
 
-2. **[LAMBDA_AUTHORIZER.md](LAMBDA_AUTHORIZER.md)**
+2. **[lambda.md](lambda.md)**
    - Lambda authorizer deployment
    - JWT token validation
    - Environment configuration
@@ -39,7 +39,7 @@ This comprehensive guide includes:
 
 ### Architecture & Design
 
-3. **[ARCHITECTURE.md](ARCHITECTURE.md)**
+3. **[architecture.md](architecture.md)**
    - Detailed architecture diagrams
    - Component descriptions
    - Network topology
@@ -48,7 +48,7 @@ This comprehensive guide includes:
 
 ### Testing & Validation
 
-4. **[POSTMAN_GUIDE.md](POSTMAN_GUIDE.md)**
+4. **[postman.md](postman.md)**
    - Postman collection setup
    - Authentication configuration
    - API endpoint testing
@@ -60,20 +60,20 @@ This comprehensive guide includes:
 ## 🗂️ Documentation by Role
 
 ### For Reviewers/Assessors
-1. Start with **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Section "Quick Start Guide"
-2. Review **[ARCHITECTURE.md](ARCHITECTURE.md)** - Understand the design
-3. Check **[API_GATEWAY_MANUAL_SETUP.md](API_GATEWAY_MANUAL_SETUP.md)** - See implementation approach
-4. Reference **[LAMBDA_AUTHORIZER.md](LAMBDA_AUTHORIZER.md)** - Review security implementation
+1. Start with **[complete_guide.md](complete_guide.md)** - Section "Quick Start Guide"
+2. Review **[architecture.md](architecture.md)** - Understand the design
+3. Check **[api_gateway_setup.md](api_gateway_setup.md)** - See implementation approach
+4. Reference **[lambda.md](lambda.md)** - Review security implementation
 
 ### For Developers/Implementers
-1. **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Full deployment walkthrough
-2. **[LAMBDA_AUTHORIZER.md](LAMBDA_AUTHORIZER.md)** - Deploy authorizer
-3. **[API_GATEWAY_MANUAL_SETUP.md](API_GATEWAY_MANUAL_SETUP.md)** - Setup API Gateway
-4. **[POSTMAN_GUIDE.md](POSTMAN_GUIDE.md)** - Test the API
+1. **[complete_guide.md](complete_guide.md)** - Full deployment walkthrough
+2. **[lambda.md](lambda.md)** - Deploy authorizer
+3. **[api_gateway_setup.md](api_gateway_setup.md)** - Setup API Gateway
+4. **[postman.md](postman.md)** - Test the API
 
 ### For Architects
-1. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Architecture overview
-2. **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Section "Architecture Updates"
+1. **[architecture.md](architecture.md)** - Architecture overview
+2. **[complete_guide.md](complete_guide.md)** - Section "Architecture Updates"
 3. Review Terraform modules in `../terraform/modules/`
 
 ---
@@ -81,7 +81,7 @@ This comprehensive guide includes:
 ## 📋 Quick Links
 
 ### Implementation Requirements
-All 5 requirements are detailed in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)**:
+All 5 requirements are detailed in **[complete_guide.md](complete_guide.md)**:
 - ✅ Public API Integration (OpenWeatherMap)
 - ✅ Lambda Authorizer (Custom JWT)
 - ✅ Proxy API Gateway (ANY /{proxy+})
@@ -89,12 +89,12 @@ All 5 requirements are detailed in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)**:
 - ✅ API Authorization (Mandatory)
 
 ### Deliverables Checklist
-Complete list in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Section "Assessment Deliverables"
+Complete list in **[complete_guide.md](complete_guide.md)** - Section "Assessment Deliverables"
 
 ### Troubleshooting
-- API Gateway: **[API_GATEWAY_MANUAL_SETUP.md](API_GATEWAY_MANUAL_SETUP.md)** - Section "Troubleshooting"
-- Lambda Authorizer: **[LAMBDA_AUTHORIZER.md](LAMBDA_AUTHORIZER.md)** - Section "Troubleshooting"
-- General Issues: **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Section "Troubleshooting"
+- API Gateway: **[api_gateway_setup.md](api_gateway_setup.md)** - Section "Troubleshooting"
+- Lambda Authorizer: **[lambda.md](lambda.md)** - Section "Troubleshooting"
+- General Issues: **[complete_guide.md](complete_guide.md)** - Section "Troubleshooting"
 
 ---
 
@@ -102,11 +102,11 @@ Complete list in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Section "Assessmen
 
 | Document | Type | Content | Size |
 |----------|------|---------|------|
-| COMPLETE_GUIDE.md | Comprehensive | All-in-one guide | 72 KB |
-| API_GATEWAY_MANUAL_SETUP.md | Setup Guide | API Gateway setup | 11 KB |
-| LAMBDA_AUTHORIZER.md | Setup Guide | Lambda deployment | 9 KB |
-| ARCHITECTURE.md | Design Doc | Architecture details | 32 KB |
-| POSTMAN_GUIDE.md | Testing Guide | API testing | 9 KB |
+| complete_guide.md | Comprehensive | All-in-one guide | 72 KB |
+| api_gateway_setup.md | Setup Guide | API Gateway setup | 11 KB |
+| lambda.md | Setup Guide | Lambda deployment | 9 KB |
+| architecture.md | Design Doc | Architecture details | 32 KB |
+| postman.md | Testing Guide | API testing | 9 KB |
 
 ---
 
@@ -114,9 +114,9 @@ Complete list in **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - Section "Assessmen
 
 If you only have 5 minutes:
 
-1. Read **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - "Quick Start Guide" section (top of file)
-2. Review **[ARCHITECTURE.md](ARCHITECTURE.md)** - "Architecture Overview" section
-3. Check **[API_GATEWAY_MANUAL_SETUP.md](API_GATEWAY_MANUAL_SETUP.md)** - "Overview" section
+1. Read **[complete_guide.md](complete_guide.md)** - "Quick Start Guide" section (top of file)
+2. Review **[architecture.md](architecture.md)** - "Architecture Overview" section
+3. Check **[api_gateway_setup.md](api_gateway_setup.md)** - "Overview" section
 
 This gives you:
 - Understanding of the implementation
@@ -127,10 +127,10 @@ This gives you:
 
 ## 📞 Need Help?
 
-1. **General Questions**: See **[COMPLETE_GUIDE.md](COMPLETE_GUIDE.md)** - "Questions & Answers" section
-2. **API Gateway Issues**: See **[API_GATEWAY_MANUAL_SETUP.md](API_GATEWAY_MANUAL_SETUP.md)** - "Troubleshooting" section
-3. **Lambda Issues**: See **[LAMBDA_AUTHORIZER.md](LAMBDA_AUTHORIZER.md)** - "Troubleshooting" section
-4. **Testing Issues**: See **[POSTMAN_GUIDE.md](POSTMAN_GUIDE.md)** - "Troubleshooting" section
+1. **General Questions**: See **[complete_guide.md](complete_guide.md)** - "Questions & Answers" section
+2. **API Gateway Issues**: See **[api_gateway_setup.md](api_gateway_setup.md)** - "Troubleshooting" section
+3. **Lambda Issues**: See **[lambda.md](lambda.md)** - "Troubleshooting" section
+4. **Testing Issues**: See **[postman.md](postman.md)** - "Troubleshooting" section
 
 ---
 

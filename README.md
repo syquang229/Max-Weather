@@ -7,14 +7,14 @@
 **All documentation is now consolidated in the `docs/` folder:**
 
 ### Quick Start
-- **[docs/COMPLETE_GUIDE.md](docs/COMPLETE_GUIDE.md)** ⭐ **START HERE** - Complete implementation guide
+- **[docs/complete_guide.md](docs/complete_guide.md)** ⭐ **START HERE** - Complete implementation guide
   - Includes: Getting Started, Implementation Notes, Deployment Guide, and Project Summary
 
 ### Component Guides
-- **[docs/API_GATEWAY_MANUAL_SETUP.md](docs/API_GATEWAY_MANUAL_SETUP.md)** - Step-by-step API Gateway setup
-- **[docs/LAMBDA_AUTHORIZER.md](docs/LAMBDA_AUTHORIZER.md)** - Lambda authorizer deployment
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Detailed architecture diagrams
-- **[docs/POSTMAN_GUIDE.md](docs/POSTMAN_GUIDE.md)** - API testing with Postman
+- **[docs/api_gateway_setup.md](docs/api_gateway_setup.md)** - Step-by-step API Gateway setup
+- **[docs/lambda.md](docs/lambda.md)** - Lambda authorizer deployment
+- **[docs/architecture.md](docs/architecture.md)** - Detailed architecture diagrams
+- **[docs/postman.md](docs/postman.md)** - API testing with Postman
 
 ## 🎯 Quick Reference
 
@@ -69,7 +69,7 @@ helm install max-weather ./max-weather \
   --values ./max-weather/values-production.yaml
 
 # 4. Create API Gateway
-# Follow: docs/API_GATEWAY_MANUAL_SETUP.md
+# Follow: docs/api_gateway_setup.md
 
 # 5. Test
 python lambda/authorizer/lambda_function.py  # Generate token
@@ -82,11 +82,11 @@ curl -H "Authorization: Bearer <token>" \
 ```
 script-clone/
 ├── docs/                           # 📚 All documentation
-│   ├── COMPLETE_GUIDE.md          # ⭐ Complete guide (start here)
-│   ├── API_GATEWAY_MANUAL_SETUP.md
-│   ├── LAMBDA_AUTHORIZER.md
-│   ├── ARCHITECTURE.md
-│   └── POSTMAN_GUIDE.md
+│   ├── complete_guide.md          # ⭐ Complete guide (start here)
+│   ├── api_gateway_setup.md
+│   ├── lambda.md
+│   ├── architecture.md
+│   └── postman.md
 │
 ├── terraform/                      # Infrastructure as Code
 │   ├── main.tf
@@ -134,11 +134,11 @@ script-clone/
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Architecture Diagram | ✅ | `docs/ARCHITECTURE.md` |
+| Architecture Diagram | ✅ | `docs/architecture.md` |
 | Terraform (Modularized) | ✅ | `terraform/modules/` |
 | Helm Chart | ✅ | `helm/max-weather/` |
 | Jenkins Pipeline | ✅ | `jenkins/Jenkinsfile` (Helm deployment) |
-| API Gateway | ✅ | `docs/API_GATEWAY_MANUAL_SETUP.md` |
+| API Gateway | ✅ | `docs/api_gateway_setup.md` |
 | Lambda Authorizer | ✅ | `lambda/authorizer/` |
 | Postman Collection | ✅ | `postman/` |
 | Public API Integration | ✅ | `application/weather-api/app.py` |
@@ -173,7 +173,7 @@ All endpoints require `Authorization: Bearer <token>` header (except `/health`).
 ## 📞 Support
 
 For issues or questions:
-1. Check `docs/COMPLETE_GUIDE.md` for detailed documentation
+1. Check `docs/complete_guide.md` for detailed documentation
 2. Review troubleshooting sections in component guides
 3. Check CloudWatch logs
 
@@ -191,4 +191,4 @@ For issues or questions:
 **Last Updated**: December 2, 2025  
 **Develop by**: Kwang Le
 
-**For complete documentation, see**: [`docs/COMPLETE_GUIDE.md`](docs/COMPLETE_GUIDE.md)
+**For complete documentation, see**: [`docs/complete_guide.md`](docs/complete_guide.md)
