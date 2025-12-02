@@ -32,8 +32,17 @@ print_warning() {
 ENVIRONMENT=${1:-production}
 IMAGE_TAG=${2:-latest}
 AWS_REGION="us-east-1"
-NAMESPACE="default"
 APP_NAME="weather-api"
+HELM_RELEASE="max-weather"
+HELM_CHART="./helm/max-weather"
+
+# Determine values file based on environment
+if [ "$ENVIRONMENT" = "staging" ]; then
+    VALUES_FILE="${HELM_CHART}/values-staging.yaml"
+    NAMESPACE="weather-staging"
+else
+    VALUES_FILE="${HELM_CHART}/values-production.yaml"
+fi
 
 print_header "Deploying Max Weather API - ${ENVIRONMENT}"
 
@@ -76,38 +85,74 @@ CLUSTER_NAME="max-weather-${ENVIRONMENT}-cluster"
 aws eks update-kubeconfig --region ${AWS_REGION} --name ${CLUSTER_NAME}
 print_success "kubectl configured"
 
-# Update deployment
-print_warning "Updating Kubernetes deployment..."
-kubectl set image deployment/${APP_NAME} \
-    ${APP_NAME}=${FULL_IMAGE} \
-    -n ${NAMESPACE}
-print_success "Deployment updated"
+# Check if Helm is installed
+if ! command -v helm &> /dev/null; then
+    echo "Error: Helm is not installed. Please install Helm 3.x"
+    exit 1
+fi
+
+# Validate Helm chart
+print_warning "Validating Helm chart..."
+helm lint ${HELM_CHART}
+print_success "Helm chart validated"
+
+# Show what will change (dry-run)
+print_warning "Previewing changes with Helm diff..."
+helm diff upgrade ${HELM_RELEASE} ${HELM_CHART} \
+    --namespace ${NAMESPACE} \
+    --values ${VALUES_FILE} \
+    --set image.tag=${IMAGE_TAG} \
+    --allow-unreleased || true
+
+echo ""
+read -p "Continue with deployment? (yes/no): " confirm
+if [ "$confirm" != "yes" ]; then
+    print_warning "Deployment cancelled"
+    exit 0
+fi
+
+# Deploy with Helm
+print_warning "Deploying with Helm (atomic upgrade)..."
+helm upgrade --install ${HELM_RELEASE} ${HELM_CHART} \
+    --namespace ${NAMESPACE} \
+    --values ${VALUES_FILE} \
+    --set image.tag=${IMAGE_TAG} \
+    --atomic \
+    --timeout 10m \
+    --wait
+print_success "Helm upgrade complete!"
 
 # Wait for rollout
-print_warning "Waiting for rollout to complete..."
-kubectl rollout status deployment/${APP_NAME} -n ${NAMESPACE} --timeout=10m
+print_warning "Verifying rollout status..."
+kubectl rollout status deployment/max-weather -n ${NAMESPACE} --timeout=10m
 print_success "Rollout complete!"
 
 # Verify deployment
 print_header "Deployment Verification"
 
-echo "Pods:"
-kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
+echo "Helm Release Status:"
+helm status ${HELM_RELEASE} -n ${NAMESPACE}
+
+echo -e "\nHelm Release History:"
+helm history ${HELM_RELEASE} -n ${NAMESPACE}
+
+echo -e "\nPods:"
+kubectl get pods -l app.kubernetes.io/name=max-weather -n ${NAMESPACE}
 
 echo -e "\nService:"
-kubectl get svc ${APP_NAME}-service -n ${NAMESPACE}
+kubectl get svc -l app.kubernetes.io/name=max-weather -n ${NAMESPACE}
 
 echo -e "\nHPA Status:"
-kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
+kubectl get hpa -n ${NAMESPACE}
 
 echo -e "\nIngress:"
-kubectl get ingress weather-api-ingress -n ${NAMESPACE}
+kubectl get ingress -n ${NAMESPACE}
 
 # Health check
 print_warning "Running health check..."
 sleep 10
 
-POD_NAME=$(kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pods -l app.kubernetes.io/name=max-weather -n ${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
 if kubectl exec ${POD_NAME} -n ${NAMESPACE} -- wget -qO- http://localhost:8000/health > /dev/null 2>&1; then
     print_success "Health check passed!"
 else
@@ -115,11 +160,17 @@ else
 fi
 
 print_header "Deployment Complete!"
+echo "Helm Release: ${HELM_RELEASE}"
 echo "Image: ${FULL_IMAGE}"
 echo "Environment: ${ENVIRONMENT}"
+echo "Values File: ${VALUES_FILE}"
 echo -e "\nTo view logs:"
-echo "  kubectl logs -f deployment/${APP_NAME} -n ${NAMESPACE}"
+echo "  kubectl logs -f deployment/max-weather -n ${NAMESPACE}"
 echo -e "\nTo rollback if needed:"
-echo "  kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE}"
+echo "  helm rollback ${HELM_RELEASE} -n ${NAMESPACE}"
+echo "  # Or to specific revision:"
+echo "  helm rollback ${HELM_RELEASE} <revision> -n ${NAMESPACE}"
+echo -e "\nTo view release history:"
+echo "  helm history ${HELM_RELEASE} -n ${NAMESPACE}"
 
 print_success "Deployment successful! 🚀"

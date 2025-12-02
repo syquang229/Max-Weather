@@ -63,6 +63,14 @@ check_prerequisites() {
         missing_deps=1
     fi
     
+    # Check Helm
+    if command -v helm &> /dev/null; then
+        print_success "Helm installed: $(helm version --short)"
+    else
+        print_error "Helm not found. Please install: https://helm.sh/docs/intro/install/"
+        missing_deps=1
+    fi
+    
     # Check Docker
     if command -v docker &> /dev/null; then
         print_success "Docker installed: $(docker --version)"
@@ -246,28 +254,39 @@ configure_kubectl() {
 }
 
 deploy_kubernetes_resources() {
-    print_header "Deploying Kubernetes Resources"
+    print_header "Deploying Kubernetes Resources with Helm"
     
-    print_warning "Deploying Nginx Ingress Controller..."
-    kubectl apply -f kubernetes/ingress-controller.yaml
+    print_warning "Validating Helm chart..."
+    helm lint helm/max-weather/
     
-    print_warning "Waiting for Ingress Controller to be ready..."
-    sleep 30
+    print_warning "Installing Max Weather application with Helm on Staging..."
+
+    helm upgrade --install max-weather-staging ./helm/max-weather \
+        --namespace weather-staging \
+        --values ./helm/max-weather/values-staging.yaml \
+        --create-namespace \
+        --atomic \
+        --timeout 10m \
+        --wait
+
+    print_warning "Installing Max Weather application with Helm on Production..."
+    helm upgrade --install max-weather-production ./helm/max-weather \
+        --namespace weather-production \
+        --values ./helm/max-weather/values-production.yaml \
+        --create-namespace \
+        --atomic \
+        --timeout 10m \
+        --wait
     
-    print_warning "Deploying Fluent Bit for CloudWatch logging..."
-    kubectl apply -f kubernetes/fluent-bit/fluent-bit-daemonset.yaml
+    print_success "Helm chart deployed successfully!"
     
-    print_warning "Deploying Weather API application..."
-    kubectl apply -f kubernetes/deployment.yaml
-    kubectl apply -f kubernetes/service.yaml
-    kubectl apply -f kubernetes/hpa.yaml
-    kubectl apply -f kubernetes/ingress.yaml
-    
-    print_success "Kubernetes resources deployed!"
+    echo ""
+    echo "Helm release status:"
+    helm status max-weather
     
     echo ""
     echo "Waiting for pods to be ready..."
-    kubectl wait --for=condition=ready pod -l app=weather-api --timeout=5m
+    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=max-weather --timeout=5m || true
     
     print_success "All pods are ready!"
 }
@@ -298,11 +317,23 @@ build_and_push_image() {
     
     print_success "Image pushed to ECR!"
     
-    # Update deployment
-    print_warning "Updating Kubernetes deployment with new image..."
-    kubectl set image deployment/weather-api weather-api="${ECR_URL}:latest"
+    # Update deployment via Helm
+    print_warning "Updating Helm release with new image on Staging..."
+    helm upgrade max-weather-staging ./helm/max-weather \
+        --namespace weather-staging \
+        --values ./helm/max-weather/values-staging.yaml \
+        --set image.tag=latest \
+        --atomic \
+        --timeout 5m
+    print_warning "Updating Helm release with new image on Production..."
+    helm upgrade max-weather-production ./helm/max-weather \
+        --namespace weather-production \
+        --values ./helm/max-weather/values-production.yaml \
+        --set image.tag=latest \
+        --atomic \
+        --timeout 5m
     
-    kubectl rollout status deployment/weather-api
+    kubectl rollout status deployment/max-weather
     
     print_success "Deployment updated!"
 }
@@ -313,16 +344,19 @@ print_summary() {
     echo -e "${GREEN}Your Max Weather platform is now deployed!${NC}\n"
     
     echo "Next steps:"
-    echo "1. Get the NLB DNS name:"
+    echo "1. Check Helm deployment:"
+    echo "   helm list -A"
+    echo ""
+    echo "2. Get the NLB DNS name:"
     echo "   kubectl get svc -n ingress-nginx ingress-nginx-controller"
     echo ""
-    echo "2. Update API Gateway VPC Link with NLB ARN"
+    echo "3. Update API Gateway VPC Link with NLB ARN"
     echo ""
-    echo "3. Create test users in Cognito"
+    echo "4. Create test users in Cognito"
     echo ""
-    echo "4. Test the API with Postman collection"
+    echo "5. Test the API with Postman collection"
     echo ""
-    echo "5. View logs in CloudWatch:"
+    echo "6. View logs in CloudWatch:"
     DASHBOARD_URL=$(grep 'cloudwatch_dashboard_url' terraform-outputs.txt | awk -F'"' '{print $2}')
     echo "   ${DASHBOARD_URL}"
     echo ""
