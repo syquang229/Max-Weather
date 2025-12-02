@@ -278,7 +278,7 @@ Create separate environments for different stages:
   "values": [
     {
       "key": "base_url",
-      "value": "https://api-staging.maxweather.com/v1",
+      "value": "https://api-staging.kwangle.weather/v1",
       "enabled": true
     }
   ]
@@ -292,7 +292,7 @@ Create separate environments for different stages:
   "values": [
     {
       "key": "base_url",
-      "value": "https://api.maxweather.com/v1",
+      "value": "https://api.kwangle.weather/v1",
       "enabled": true
     }
   ]
@@ -345,7 +345,7 @@ stage('API Tests') {
 For issues or questions:
 - Check CloudWatch logs: `/aws/eks/max-weather-production-cluster/application`
 - Review API Gateway logs
-- Contact DevOps team
+- Contact Kwang Le
 
 ---
 

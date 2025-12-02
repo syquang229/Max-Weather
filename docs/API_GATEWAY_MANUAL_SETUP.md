@@ -242,7 +242,7 @@ Expected response:
 1. Go to **Custom Domain Names** in API Gateway
 2. Click **Create**
 3. Settings:
-   - **Domain Name**: `api.maxweather.com`
+   - **Domain Name**: `api.kwangle.weather`
    - **Certificate**: Select or create ACM certificate
    - **Endpoint Type**: Regional
 4. Click **Create**

@@ -13,7 +13,7 @@ This document describes the complete infrastructure architecture for the Max Wea
                                  │
                     ┌────────────▼────────────┐
                     │    Route 53 (DNS)       │
-                    │  weather.maxweather.com │
+                    │  weather.kwangle.weather │
                     └────────────┬────────────┘
                                  │
 ┌────────────────────────────────────────────────────────────────────────────────┐
@@ -266,7 +266,7 @@ This document describes the complete infrastructure architecture for the Max Wea
 #### Ingress Rules
 ```yaml
 Rules:
-  - Host: internal.maxweather.com
+  - Host: internal.kwangle.weather
     Paths:
       - /forecast → weather-api-service:80
       - /current → weather-api-service:80
@@ -453,7 +453,7 @@ Scale Down:
 ### 11. Data Flow
 
 #### Request Flow
-1. Client sends request to `api.maxweather.com`
+1. Client sends request to `api.kwangle.weather`
 2. Route 53 resolves to API Gateway
 3. API Gateway validates OAuth2 token (Cognito)
 4. Request forwarded to VPC Link
@@ -560,4 +560,4 @@ Key benefits:
 
 **Document Version**: 1.0  
 **Last Updated**: December 2, 2025  
-**Author**: DevOps Team
+**Author**: Kwang Le

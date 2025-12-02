@@ -1021,7 +1021,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| **Compute** | Amazon EKS 1.28 | Managed Kubernetes cluster |
+| **Compute** | Amazon EKS 1.31 | Managed Kubernetes cluster |
 | **Networking** | VPC (Multi-AZ) | Private subnets, NAT gateways |
 | **Load Balancing** | Network LB | Internal load balancer |
 | **Ingress** | Nginx Ingress Controller | Path-based routing |
@@ -1137,7 +1137,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### Infrastructure
 - AWS (EKS, VPC, NLB, API Gateway, Lambda, CloudWatch, ECR)
 - Terraform 1.5+ (Infrastructure as Code)
-- Kubernetes 1.28
+- Kubernetes 1.31
 
 ### Application
 - Python 3.11 + Flask 3.0
@@ -1336,7 +1336,7 @@ terraform/
 - **Proxy Integration**: ANY /{proxy+} forwards all requests to backend
 - **VPC Link**: Secure connection to internal NLB
 - **Rate Limiting**: 10,000 req/s with burst of 5,000
-- **Custom Domain**: Support for api.maxweather.com
+- **Custom Domain**: Support for api.kwangle.weather
 - **CloudWatch Logging**: Full request/response logging
 - **Manual Creation**: Can be created via AWS Console as alternative to Terraform
 
@@ -1570,7 +1570,7 @@ script-clone/
 
 ### Infrastructure
 - **Cloud Provider**: AWS
-- **Container Orchestration**: Kubernetes (Amazon EKS 1.28)
+- **Container Orchestration**: Kubernetes (Amazon EKS 1.31)
 - **IaC**: Terraform 1.5+
 - **Service Mesh**: Nginx Ingress
 - **Container Registry**: Amazon ECR
@@ -1754,7 +1754,7 @@ All deliverables completed and tested:
 
 **Technologies**: AWS, EKS, Terraform, Kubernetes, Docker, Jenkins, Python, Flask, OAuth2, CloudWatch
 
-For questions or issues, please refer to the documentation or contact the DevOps team.
+For questions or issues, please refer to the documentation or contact the Kwang Le.
 
 **Happy Deploying! 🚀☁️**
 # Deployment Guide - Max Weather Platform
@@ -2048,7 +2048,7 @@ aws route53 change-resource-record-sets \
     "Changes": [{
       "Action": "UPSERT",
       "ResourceRecordSet": {
-        "Name": "api.maxweather.com",
+        "Name": "api.kwangle.weather",
         "Type": "CNAME",
         "TTL": 300,
         "ResourceRecords": [{"Value": "'$API_ENDPOINT'"}]
@@ -2266,4 +2266,4 @@ terraform state pull > backup.tfstate
 
 **Last Updated**: December 2, 2025  
 **Version**: 1.0.0  
-**Maintained By**: DevOps Team
+**Maintained By**: Kwang Le
