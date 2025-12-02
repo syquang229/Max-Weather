@@ -550,10 +550,10 @@ kubectl create secret generic weather-api-secrets \
   --from-literal=OPENWEATHER_API_KEY=your-api-key
 
 kubectl set env deployment/weather-api \
-  --from=secret/weather-api-secrets
+  --from=secret/weather-api-secrets -n weather-production
 
 # Restart pods
-kubectl rollout restart deployment/weather-api
+kubectl rollout restart deployment/weather-api -n weather-production
 
 # Test (should return real weather data)
 curl -H "Authorization: Bearer $TOKEN" \
@@ -1701,7 +1701,7 @@ aws logs tail /aws/eks/max-weather-production-cluster/application --follow
 ### Scaling Manually
 ```bash
 # Scale pods
-kubectl scale deployment/weather-api --replicas=5
+kubectl scale deployment/weather-api --replicas=5 -n weather-production
 
 # Scale nodes (update node group)
 terraform apply -var="eks_node_groups={general={desired_size=5,...}}"
@@ -1715,7 +1715,7 @@ terraform apply -var="eks_node_groups={general={desired_size=5,...}}"
 # Or manually
 docker build -t weather-api:v1.2.3 application/weather-api/
 docker push ${ECR_URL}:v1.2.3
-kubectl set image deployment/weather-api weather-api=${ECR_URL}:v1.2.3
+kubectl set image deployment/weather-api weather-api=${ECR_URL}:v1.2.3 -n weather-production
 ```
 
 ## 🔐 Security Considerations
@@ -2028,15 +2028,15 @@ aws ecr get-login-password --region us-east-1 | \
 docker push ${ECR_URL}
 
 # Update deployment with Helm
-helm upgrade max-weather ./max-weather \
-  --namespace default \
-  --values ./max-weather/values-production.yaml \
-  --set image.tag=latest \
+helm upgrade max-weather-production ./helm/max-weather \
+  --namespace weather-production \
+  --values ./helm/max-weather/values-production.yaml \
+  --set weatherApi.image.tag=latest \
   --atomic \
   --timeout 5m
 
 # Wait for rollout
-kubectl rollout status deployment/max-weather
+kubectl rollout status deployment/weather-api -n weather-production
 ```
 
 ## Post-Deployment Configuration
@@ -2399,7 +2399,7 @@ stage('Deploy to Production') {
 ### 1. Test Application Directly
 ```bash
 # Port-forward to pod
-kubectl port-forward deployment/weather-api 8000:8000
+kubectl port-forward deployment/weather-api 8000:8000 -n weather-production
 
 # Test endpoints
 curl http://localhost:8000/health
@@ -2566,13 +2566,13 @@ kubectl rollout status deployment/max-weather
 #### Rollback Kubernetes Deployment (Manual)
 ```bash
 # View rollout history
-kubectl rollout history deployment/max-weather
+kubectl rollout history deployment/weather-api -n weather-production
 
 # Rollback to previous version
-kubectl rollout undo deployment/max-weather
+kubectl rollout undo deployment/weather-api -n weather-production
 
 # Rollback to specific revision
-kubectl rollout undo deployment/max-weather --to-revision=2
+kubectl rollout undo deployment/weather-api --to-revision=2 -n weather-production
 ```
 
 #### Rollback Terraform Changes

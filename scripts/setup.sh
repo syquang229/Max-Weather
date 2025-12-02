@@ -281,12 +281,12 @@ deploy_kubernetes_resources() {
     print_success "Helm chart deployed successfully!"
     
     echo ""
-    echo "Helm release status:"
-    helm status max-weather
+    echo "Helm release status (Production):"
+    helm status max-weather-production -n weather-production
     
     echo ""
     echo "Waiting for pods to be ready..."
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=max-weather --timeout=5m || true
+    kubectl wait --for=condition=ready pod -l app=weather-api --timeout=5m -n weather-production || true
     
     print_success "All pods are ready!"
 }

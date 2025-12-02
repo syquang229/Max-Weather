@@ -115,7 +115,7 @@ helm install max-weather-production ./helm/max-weather --dry-run --debug
 The chart deploys the following Kubernetes resources:
 
 ### Weather Namespace
-- Deployment: weather-api (2 replicas)
+- Deployment: weather-api (3 replicas)
 - Service: weather-api-service (ClusterIP)
 - ServiceAccount: weather-api
 - Ingress: weather-api-ingress

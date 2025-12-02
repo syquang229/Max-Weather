@@ -107,14 +107,6 @@ script-clone/
 │       ├── values-production.yaml
 │       └── templates/             # 20 K8s templates
 │
-├── kubernetes/                     # Legacy K8s manifests
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── hpa.yaml
-│   ├── ingress-controller.yaml
-│   ├── ingress.yaml
-│   └── fluent-bit/
-│
 ├── lambda/
 │   └── authorizer/                # Custom Lambda Authorizer
 │       ├── lambda_function.py
@@ -145,7 +137,6 @@ script-clone/
 | Architecture Diagram | ✅ | `docs/ARCHITECTURE.md` |
 | Terraform (Modularized) | ✅ | `terraform/modules/` |
 | Helm Chart | ✅ | `helm/max-weather/` |
-| Kubernetes Manifests | ✅ | `kubernetes/` (legacy) |
 | Jenkins Pipeline | ✅ | `jenkins/Jenkinsfile` (Helm deployment) |
 | API Gateway | ✅ | `docs/API_GATEWAY_MANUAL_SETUP.md` |
 | Lambda Authorizer | ✅ | `lambda/authorizer/` |

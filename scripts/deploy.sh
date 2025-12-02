@@ -33,15 +33,17 @@ ENVIRONMENT=${1:-production}
 IMAGE_TAG=${2:-latest}
 AWS_REGION="us-east-1"
 APP_NAME="weather-api"
-HELM_RELEASE="max-weather"
 HELM_CHART="./helm/max-weather"
 
 # Determine values file based on environment
 if [ "$ENVIRONMENT" = "staging" ]; then
     VALUES_FILE="${HELM_CHART}/values-staging.yaml"
     NAMESPACE="weather-staging"
+    HELM_RELEASE="max-weather-staging"
 else
     VALUES_FILE="${HELM_CHART}/values-production.yaml"
+    NAMESPACE="weather-production"
+    HELM_RELEASE="max-weather-production"
 fi
 
 print_header "Deploying Max Weather API - ${ENVIRONMENT}"
@@ -101,7 +103,7 @@ print_warning "Previewing changes with Helm diff..."
 helm diff upgrade ${HELM_RELEASE} ${HELM_CHART} \
     --namespace ${NAMESPACE} \
     --values ${VALUES_FILE} \
-    --set image.tag=${IMAGE_TAG} \
+    --set weatherApi.image.tag=${IMAGE_TAG} \
     --allow-unreleased || true
 
 echo ""
@@ -116,7 +118,7 @@ print_warning "Deploying with Helm (atomic upgrade)..."
 helm upgrade --install ${HELM_RELEASE} ${HELM_CHART} \
     --namespace ${NAMESPACE} \
     --values ${VALUES_FILE} \
-    --set image.tag=${IMAGE_TAG} \
+    --set weatherApi.image.tag=${IMAGE_TAG} \
     --atomic \
     --timeout 10m \
     --wait
@@ -124,7 +126,7 @@ print_success "Helm upgrade complete!"
 
 # Wait for rollout
 print_warning "Verifying rollout status..."
-kubectl rollout status deployment/max-weather -n ${NAMESPACE} --timeout=10m
+kubectl rollout status deployment/weather-api -n ${NAMESPACE} --timeout=10m
 print_success "Rollout complete!"
 
 # Verify deployment
@@ -137,10 +139,10 @@ echo -e "\nHelm Release History:"
 helm history ${HELM_RELEASE} -n ${NAMESPACE}
 
 echo -e "\nPods:"
-kubectl get pods -l app.kubernetes.io/name=max-weather -n ${NAMESPACE}
+kubectl get pods -l app=weather-api -n ${NAMESPACE}
 
 echo -e "\nService:"
-kubectl get svc -l app.kubernetes.io/name=max-weather -n ${NAMESPACE}
+kubectl get svc -l app=weather-api -n ${NAMESPACE}
 
 echo -e "\nHPA Status:"
 kubectl get hpa -n ${NAMESPACE}
@@ -152,7 +154,7 @@ kubectl get ingress -n ${NAMESPACE}
 print_warning "Running health check..."
 sleep 10
 
-POD_NAME=$(kubectl get pods -l app.kubernetes.io/name=max-weather -n ${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pods -l app=weather-api -n ${NAMESPACE} -o jsonpath='{.items[0].metadata.name}')
 if kubectl exec ${POD_NAME} -n ${NAMESPACE} -- wget -qO- http://localhost:8000/health > /dev/null 2>&1; then
     print_success "Health check passed!"
 else
@@ -165,7 +167,7 @@ echo "Image: ${FULL_IMAGE}"
 echo "Environment: ${ENVIRONMENT}"
 echo "Values File: ${VALUES_FILE}"
 echo -e "\nTo view logs:"
-echo "  kubectl logs -f deployment/max-weather -n ${NAMESPACE}"
+echo "  kubectl logs -f deployment/weather-api -n ${NAMESPACE}"
 echo -e "\nTo rollback if needed:"
 echo "  helm rollback ${HELM_RELEASE} -n ${NAMESPACE}"
 echo "  # Or to specific revision:"
