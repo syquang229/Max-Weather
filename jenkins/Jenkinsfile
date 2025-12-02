@@ -30,7 +30,12 @@ spec:
     securityContext:
       privileged: true
   - name: kubectl
-    image: bitnami/kubectl:1.28
+    image: bitnami/kubectl:1.31
+    command:
+    - cat
+    tty: true
+  - name: helm
+    image: alpine/helm:3.13.0
     command:
     - cat
     tty: true
@@ -59,15 +64,21 @@ spec:
         
         // EKS Configuration
         EKS_CLUSTER_NAME_STAGING = 'max-weather-staging-cluster'
-        EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-production-cluster'
+        EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-cluster'
         
         // Application Configuration
         APP_NAME = 'weather-api'
         NAMESPACE = 'default'
         
+        // Helm Configuration
+        HELM_RELEASE_NAME = 'max-weather'
+        HELM_CHART_PATH = './helm/max-weather'
+        HELM_VALUES_STAGING = './helm/max-weather/values-staging.yaml'
+        HELM_VALUES_PRODUCTION = './helm/max-weather/values-production.yaml'
+        
         // Slack/Email notifications
         SLACK_CHANNEL = '#deployments'
-        NOTIFICATION_EMAIL = 'devops@maxweather.com'
+        NOTIFICATION_EMAIL = 'devops@kwangle.weather'
     }
 
     options {
@@ -175,13 +186,42 @@ spec:
 
         stage('Deploy to Staging') {
             steps {
-                container('kubectl') {
+                script {
+                    echo "========================================="
+                    echo "Stage: Helm Lint & Validation (Staging)"
+                    echo "========================================="
+                }
+                
+                container('helm') {
                     script {
-                        echo "========================================="
-                        echo "Stage: Deploy to Staging"
-                        echo "Cluster: ${EKS_CLUSTER_NAME_STAGING}"
-                        echo "========================================="
-                        
+                        sh """
+                            # Helm Lint
+                            echo "Running Helm lint..."
+                            helm lint ${HELM_CHART_PATH}
+                            
+                            # Validate templates render correctly
+                            echo "Validating Helm templates..."
+                            helm template ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                                --values ${HELM_VALUES_STAGING} \
+                                --set weatherApi.image.tag=${IMAGE_TAG} \
+                                --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+                                --set global.aws.region=${AWS_REGION} \
+                                > /dev/null
+                            
+                            echo "✅ Helm validation passed"
+                        """
+                    }
+                }
+                
+                script {
+                    echo "========================================="
+                    echo "Stage: Helm Diff (Staging)"
+                    echo "Cluster: ${EKS_CLUSTER_NAME_STAGING}"
+                    echo "========================================="
+                }
+                
+                container('helm') {
+                    script {
                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                             sh """
                                 # Configure kubectl for staging
@@ -189,19 +229,63 @@ spec:
                                     --region ${AWS_REGION} \
                                     --name ${EKS_CLUSTER_NAME_STAGING}
                                 
-                                # Update deployment with new image
-                                kubectl set image deployment/${APP_NAME} \
-                                    ${APP_NAME}=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
-                                    -n ${NAMESPACE}
+                                # Install helm-diff plugin if not present
+                                helm plugin list | grep diff || helm plugin install https://github.com/databus23/helm-diff || true
                                 
-                                # Wait for rollout to complete
-                                kubectl rollout status deployment/${APP_NAME} \
-                                    -n ${NAMESPACE} \
-                                    --timeout=5m
+                                # Show diff between current and new release
+                                echo "Showing Helm diff for staging deployment..."
+                                helm diff upgrade ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                                    --namespace ${NAMESPACE} \
+                                    --values ${HELM_VALUES_STAGING} \
+                                    --set weatherApi.image.tag=${IMAGE_TAG} \
+                                    --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+                                    --set global.aws.region=${AWS_REGION} \
+                                    --allow-unreleased || echo "First deployment or diff plugin not available"
+                            """
+                        }
+                    }
+                }
+                
+                script {
+                    echo "========================================="
+                    echo "Stage: Helm Deploy (Staging)"
+                    echo "========================================="
+                }
+                
+                container('helm') {
+                    script {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Deploy using Helm
+                                echo "Deploying to staging with Helm..."
+                                helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                                    --namespace ${NAMESPACE} \
+                                    --create-namespace \
+                                    --values ${HELM_VALUES_STAGING} \
+                                    --set weatherApi.image.tag=${IMAGE_TAG} \
+                                    --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+                                    --set global.aws.region=${AWS_REGION} \
+                                    --wait \
+                                    --timeout 30m \
+                                    --atomic
                                 
+                                # Show release info
+                                helm status ${HELM_RELEASE_NAME} -n ${NAMESPACE}
+                                helm get values ${HELM_RELEASE_NAME} -n ${NAMESPACE}
+                            """
+                        }
+                    }
+                }
+                
+                container('kubectl') {
+                    script {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
                                 # Verify deployment
+                                echo "Verifying deployment..."
                                 kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
                                 kubectl get svc ${APP_NAME}-service -n ${NAMESPACE}
+                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
                             """
                         }
                     }
@@ -247,14 +331,15 @@ spec:
             steps {
                 script {
                     echo "========================================="
-                    echo "Stage: Manual Approval"
-                    echo "Waiting for approval to deploy to production..."
+                    echo "Stage: Approval Gate"
+                    echo "Staging deployment successful!"
+                    echo "Waiting for approval to proceed to production..."
                     echo "========================================="
                     
                     timeout(time: 24, unit: 'HOURS') {
-                        input message: 'Deploy to Production?', 
-                              ok: 'Deploy',
-                              submitter: 'admin,devops-lead'
+                        input message: 'Proceed to Production Deployment?', 
+                              ok: 'Proceed',
+                              submitter: 'techlead,devop'
                     }
                 }
             }
@@ -262,13 +347,42 @@ spec:
 
         stage('Deploy to Production') {
             steps {
-                container('kubectl') {
+                script {
+                    echo "========================================="
+                    echo "Stage: Helm Lint & Validation (Production)"
+                    echo "========================================="
+                }
+                
+                container('helm') {
                     script {
-                        echo "========================================="
-                        echo "Stage: Deploy to Production"
-                        echo "Cluster: ${EKS_CLUSTER_NAME_PRODUCTION}"
-                        echo "========================================="
-                        
+                        sh """
+                            # Helm Lint for production
+                            echo "Running Helm lint..."
+                            helm lint ${HELM_CHART_PATH}
+                            
+                            # Validate production templates
+                            echo "Validating Helm templates for production..."
+                            helm template ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                                --values ${HELM_VALUES_PRODUCTION} \
+                                --set weatherApi.image.tag=${IMAGE_TAG} \
+                                --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+                                --set global.aws.region=${AWS_REGION} \
+                                > /dev/null
+                            
+                            echo "✅ Helm validation passed for production"
+                        """
+                    }
+                }
+                
+                script {
+                    echo "========================================="
+                    echo "Stage: Helm Diff (Production)"
+                    echo "Cluster: ${EKS_CLUSTER_NAME_PRODUCTION}"
+                    echo "========================================="
+                }
+                
+                container('helm') {
+                    script {
                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                             sh """
                                 # Configure kubectl for production
@@ -276,19 +390,80 @@ spec:
                                     --region ${AWS_REGION} \
                                     --name ${EKS_CLUSTER_NAME_PRODUCTION}
                                 
-                                # Update deployment with new image
-                                kubectl set image deployment/${APP_NAME} \
-                                    ${APP_NAME}=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
-                                    -n ${NAMESPACE}
+                                # Install helm-diff plugin if not present
+                                helm plugin list | grep diff || helm plugin install https://github.com/databus23/helm-diff || true
                                 
-                                # Wait for rollout to complete
-                                kubectl rollout status deployment/${APP_NAME} \
-                                    -n ${NAMESPACE} \
-                                    --timeout=10m
+                                # Show diff for production deployment
+                                echo "Showing Helm diff for production deployment..."
+                                helm diff upgrade ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                                    --namespace ${NAMESPACE} \
+                                    --values ${HELM_VALUES_PRODUCTION} \
+                                    --set weatherApi.image.tag=${IMAGE_TAG} \
+                                    --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+                                    --set global.aws.region=${AWS_REGION} \
+                                    --allow-unreleased || echo "First deployment or diff plugin not available"
+                            """
+                        }
+                    }
+                }
+                
+                script {
+                    echo "========================================="
+                    echo "Stage: Manual Approval for Production Deployment"
+                    echo "Please review the Helm diff output above"
+                    echo "========================================="
+                    
+                    timeout(time: 24, unit: 'HOURS') {
+                        input message: 'Deploy to Production? Review Helm diff output above.', 
+                              ok: 'Deploy to Production',
+                              submitter: 'techlead,devop'
+                    }
+                }
+                
+                script {
+                    echo "========================================="
+                    echo "Stage: Helm Deploy (Production)"
+                    echo "========================================="
+                }
+                
+                container('helm') {
+                    script {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Deploy to production using Helm
+                                echo "Deploying to production with Helm..."
+                                helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                                    --namespace ${NAMESPACE} \
+                                    --create-namespace \
+                                    --values ${HELM_VALUES_PRODUCTION} \
+                                    --set weatherApi.image.tag=${IMAGE_TAG} \
+                                    --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+                                    --set global.aws.region=${AWS_REGION} \
+                                    --wait \
+                                    --timeout 15m \
+                                    --atomic
                                 
-                                # Verify deployment
+                                # Show release info
+                                helm status ${HELM_RELEASE_NAME} -n ${NAMESPACE}
+                                helm get values ${HELM_RELEASE_NAME} -n ${NAMESPACE}
+                                
+                                # List all releases
+                                helm list -n ${NAMESPACE}
+                            """
+                        }
+                    }
+                }
+                
+                container('kubectl') {
+                    script {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Verify production deployment
+                                echo "Verifying production deployment..."
                                 kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
+                                kubectl get svc ${APP_NAME}-service -n ${NAMESPACE}
                                 kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
+                                kubectl get ingress -n ${NAMESPACE}
                             """
                         }
                     }
@@ -408,11 +583,13 @@ spec:
                 )
                 
                 // Rollback production if deployment failed
-                container('kubectl') {
-                    sh """
-                        echo "Rolling back production deployment..."
-                        kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
-                    """
+                container('helm') {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                        sh """
+                            echo "Rolling back production deployment with Helm..."
+                            helm rollback ${HELM_RELEASE_NAME} -n ${NAMESPACE} || true
+                        """
+                    }
                 }
             }
         }

@@ -1,4 +1,4 @@
-# Max Weather - Cloud-Native Weather Forecasting Platform
+# Max Weather - Weather Forecasting Platform
 
 > Production-ready, highly available weather API on AWS with Kubernetes
 
@@ -36,14 +36,14 @@ Lambda Authorizer (JWT Validation)
   ↓
 VPC Link → NLB → Nginx Ingress
   ↓
-Weather API Pods (3-10 replicas)
+Weather API Pods (1-5 replicas)
   ↓
 OpenWeatherMap Public API
 ```
 
 ### Key Technologies
 - **AWS**: EKS, Lambda, API Gateway, VPC, CloudWatch, ECR
-- **Kubernetes**: 1.28, Multi-AZ deployment, HPA, Ingress
+- **Kubernetes**: 1.31, Multi-AZ deployment, HPA, Ingress
 - **IaC**: Terraform (modularized)
 - **Security**: Lambda Authorizer, JWT, IRSA
 - **External API**: OpenWeatherMap
@@ -176,7 +176,7 @@ For issues or questions:
 
 ## 🏆 Project Status
 
-- **Completion**: ✅ 100%
+- **Completion**: ✅ 90%
 - **Requirements Met**: ✅ 5/5
 - **Assessment Ready**: ✅ Yes
 - **Documentation**: ✅ Complete

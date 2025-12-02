@@ -155,7 +155,7 @@ This document describes the complete infrastructure architecture for the Max Wea
 └───────────────────────────────────────────────────────────────────────┘
 
 ┌───────────────────────────────────────────────────────────────────────┐
-│                     CI/CD Pipeline (Jenkins)                           │
+│                  CI/CD Pipeline (Jenkins with Helm)                    │
 │                    (Can be on EC2 or external)                        │
 ├───────────────────────────────────────────────────────────────────────┤
 │                                                                        │
@@ -165,10 +165,43 @@ This document describes the complete infrastructure architecture for the Max Wea
 │  └──────────┘   └──────────┘   └──────────┘   └──────────┘          │
 │                                                      │                 │
 │                                                      ▼                 │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐          │
-│  │Production│◀──│  Approve │◀──│ Staging  │◀──│  Deploy  │          │
-│  │  Deploy  │   │ (Manual) │   │  Deploy  │   │ to K8s   │          │
-│  └──────────┘   └──────────┘   └──────────┘   └──────────┘          │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                   STAGING DEPLOYMENT (Helm)                      │ │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌─────────────┐ │ │
+│  │  │Helm Lint  │─▶│Helm Diff  │─▶│Helm Deploy│─▶│Smoke Tests  │ │ │
+│  │  │Validate   │  │Show Changes│  │--atomic   │  │Health Check │ │ │
+│  │  └───────────┘  └───────────┘  └───────────┘  └─────────────┘ │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                 │                                     │
+│                                 ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                    APPROVAL GATE                                 │ │
+│  │  Manual approval required (24h timeout)                          │ │
+│  │  Authorized approvers: admin, devops-lead                        │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                 │                                     │
+│                                 ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │                PRODUCTION DEPLOYMENT (Helm)                      │ │
+│  │  ┌───────────┐  ┌───────────┐  ┌────────────┐  ┌────────────┐ │ │
+│  │  │Helm Lint  │─▶│Helm Diff  │─▶│Manual      │─▶│Helm Deploy │ │ │
+│  │  │Validate   │  │Review     │  │Approval    │  │--atomic    │ │ │
+│  │  └───────────┘  └───────────┘  └────────────┘  └─────┬──────┘ │ │
+│  │                                                        │         │ │
+│  │  ┌──────────────────┐                                 │         │ │
+│  │  │ Health Checks    │◀────────────────────────────────┘         │ │
+│  │  │ Verify All Pods  │                                           │ │
+│  │  └──────────────────┘                                           │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                 │                                     │
+│                                 ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │              POST-DEPLOYMENT                                     │ │
+│  │  • Tag Git Release (v${BUILD_NUMBER})                           │ │
+│  │  • Update Helm History                                          │ │
+│  │  • Send Notifications (Email/Slack)                             │ │
+│  │  • Auto-Rollback on Failure (helm rollback)                     │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
 │                                                                        │
 └───────────────────────────────────────────────────────────────────────┘
 ```
@@ -374,55 +407,314 @@ Scale Down:
   - Delete untagged images after 1 day
 - **Encryption**: AES-256
 
-### 9. CI/CD Pipeline (Jenkins)
+### 9. CI/CD Pipeline (Jenkins with Helm)
+
+#### Pipeline Overview
+
+The CI/CD pipeline uses Helm for declarative, version-controlled deployments with automated validation and manual approval gates for production.
+
+```
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   
+│ Checkout │──▶│  Build   │──▶│   Test   │──▶│ Push ECR │   
+│   Code   │   │  Docker  │   │   Unit   │   │  + Scan  │   
+└──────────┘   └──────────┘   └──────────┘   └──────────┘   
+                                                     │
+                    ┌────────────────────────────────┘
+                    ▼
+         ╔══════════════════════════╗
+         ║   STAGING DEPLOYMENT     ║
+         ╠══════════════════════════╣
+         ║ 1. Helm Lint            ║
+         ║ 2. Helm Diff            ║
+         ║ 3. Helm Deploy          ║
+         ║ 4. Smoke Tests          ║
+         ╚══════════════════════════╝
+                    │
+                    ▼
+         ┌────────────────────┐
+         │ Manual Approval    │
+         │ (24h timeout)      │
+         └────────────────────┘
+                    │
+                    ▼
+         ╔══════════════════════════╗
+         ║  PRODUCTION DEPLOYMENT   ║
+         ╠══════════════════════════╣
+         ║ 1. Helm Lint            ║
+         ║ 2. Helm Diff            ║
+         ║ 3. Manual Approval      ║ ← Review Diff
+         ║ 4. Helm Deploy          ║
+         ║ 5. Health Checks        ║
+         ╚══════════════════════════╝
+                    │
+                    ▼
+         ┌────────────────────┐
+         │   Tag Release      │
+         │   Send Notify      │
+         └────────────────────┘
+```
 
 #### Pipeline Stages
 
 **1. Checkout**
 - Pull latest code from Git repository
 - Verify branch and commit
+- Load Jenkinsfile and Helm charts
 
-**2. Build**
-- Build Docker image
-- Tag with commit SHA and build number
-- Run security scan (Trivy)
+**2. Build Docker Image**
+- Build Docker image with multi-stage builds
+- Tag with build number: `${BUILD_NUMBER}`
+- Tag as latest: `latest`
+- Include build metadata:
+  - `BUILD_NUMBER=${BUILD_NUMBER}`
+  - `GIT_COMMIT=${GIT_COMMIT}`
+  - `BUILD_DATE=${TIMESTAMP}`
 
-**3. Test**
-- Run unit tests
-- Generate code coverage report
-- Run integration tests
+**3. Run Tests**
+- Execute unit tests with pytest
+- Generate code coverage report (target: >80%)
+- Run linting checks (flake8, black)
+- Perform security scans with Trivy
+- Validate Dockerfile best practices
 
 **4. Push to ECR**
-- Authenticate with ECR
-- Push Docker image
-- Scan for vulnerabilities
+- Authenticate to Amazon ECR
+- Push tagged images to repository
+- Initiate ECR vulnerability scanning
+- Verify image integrity
+- Update image manifest
 
-**5. Deploy to Staging**
-- Update kubectl context
-- Apply Kubernetes manifests
-- Wait for rollout completion
-- Run smoke tests
+**5. Deploy to Staging (Helm-based)**
 
-**6. Manual Approval**
-- Notify team via Slack/Email
-- Wait for manual approval
-- Timeout after 24 hours
+This stage uses Helm for staging deployment:
 
-**7. Deploy to Production**
-- Update kubectl context (production)
-- Deploy with rolling update
-- Monitor deployment progress
-- Run health checks
+**5a. Helm Lint**
+```bash
+helm lint ./helm/max-weather
+```
+- Validates chart syntax and structure
+- Checks for deprecated APIs
+- Verifies template rendering
+- Ensures values schema compliance
 
-**8. Post-Deployment**
-- Tag release in Git
-- Update documentation
-- Notify stakeholders
+**5b. Helm Diff**
+```bash
+helm diff upgrade max-weather ./helm/max-weather \
+  --namespace default \
+  --values ./helm/max-weather/values-staging.yaml \
+  --set weatherApi.image.tag=${IMAGE_TAG} \
+  --set global.aws.accountId=${AWS_ACCOUNT_ID}
+```
+- Shows exact changes to be applied
+- Compares current vs. new state
+- Highlights added/modified/deleted resources
+- Enables informed deployment decisions
 
-**9. Rollback (if failure)**
-- Automatic rollback on health check failure
-- Restore previous deployment
-- Alert on-call engineer
+**5c. Helm Deploy (Staging)**
+```bash
+helm upgrade --install max-weather ./helm/max-weather \
+  --namespace default \
+  --create-namespace \
+  --values ./helm/max-weather/values-staging.yaml \
+  --set weatherApi.image.tag=${IMAGE_TAG} \
+  --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+  --set global.aws.region=${AWS_REGION} \
+  --wait --timeout 10m --atomic
+```
+- Atomic deployment (auto-rollback on failure)
+- Waits for all resources to be ready
+- Updates deployment with new image
+- Maintains revision history
+
+**5d. Verify Staging**
+```bash
+helm status max-weather -n weather-staging
+kubectl get pods -l app=weather-api -n weather-staging
+kubectl get hpa weather-api-hpa -n weather-staging
+```
+
+**6. Run Smoke Tests (Staging)**
+- Test `/health` endpoint
+- Validate `/current` weather endpoint
+- Verify `/forecast` endpoint
+- Check authentication flow
+- Ensure proper error handling
+
+**7. Approval for Production**
+- Manual approval gate
+- Review staging test results
+- Check monitoring dashboards
+- Authorized approvers only (admin, devops-lead)
+- 24-hour approval window
+
+**8. Deploy to Production (Helm-based with Approval)**
+
+**8a. Helm Lint (Production)**
+```bash
+helm lint ./helm/max-weather
+```
+- Re-validates chart before production
+- Ensures no changes since staging
+
+**8b. Helm Diff (Production)**
+```bash
+helm diff upgrade max-weather ./helm/max-weather \
+  --namespace default \
+  --values ./helm/max-weather/values-production.yaml \
+  --set weatherApi.image.tag=${IMAGE_TAG} \
+  --set global.aws.accountId=${AWS_ACCOUNT_ID}
+```
+- Shows production-specific changes
+- Displays differences from current production state
+- Critical review point before deployment
+
+**8c. Manual Approval (Review Diff)**
+- **CRITICAL STEP**: Review Helm diff output
+- Verify resource changes are expected
+- Check replica counts and resource limits
+- Confirm image tag and version
+- Approve/Reject deployment
+- Authorized approvers only
+
+**8d. Helm Deploy (Production)**
+```bash
+helm upgrade --install max-weather ./helm/max-weather \
+  --namespace default \
+  --create-namespace \
+  --values ./helm/max-weather/values-production.yaml \
+  --set weatherApi.image.tag=${IMAGE_TAG} \
+  --set global.aws.accountId=${AWS_ACCOUNT_ID} \
+  --set global.aws.region=${AWS_REGION} \
+  --wait --timeout 15m --atomic
+```
+- Atomic deployment with longer timeout
+- Automatic rollback on any failure
+- Progressive rollout strategy
+- Monitors pod health during rollout
+
+**8e. Verify Production**
+```bash
+helm status max-weather -n weather-production
+helm list -n weather-production
+kubectl get pods -l app=weather-api -n weather-production
+kubectl get hpa,pdb,ingress -n weather-production
+```
+
+**9. Run Health Checks (Production)**
+- Multiple health check attempts (5 retries)
+- Verify all pods are ready
+- Check HPA status and metrics
+- Validate ingress configuration
+- Test API endpoints
+- Monitor CloudWatch metrics
+
+**10. Post-Deployment**
+- Tag Git commit: `v${BUILD_NUMBER}`
+- Push Git tags to repository
+- Generate release notes
+- Update Helm release history
+- Send success notifications (Email/Slack)
+
+**11. Rollback (if failure)**
+
+Automatic rollback on deployment failure:
+
+```bash
+helm rollback max-weather -n weather-production
+```
+
+- Helm automatically rolls back to previous revision
+- Restores previous working state
+- Alerts on-call engineer
+- Captures failure logs
+- Updates incident tracking
+
+#### Helm Configuration
+
+**Chart Location**: `./helm/max-weather`
+
+**Values Files**:
+- `values-staging.yaml`: Staging environment configuration
+  - 2 replicas minimum
+  - Debug logging
+  - Lower resource limits
+  - Host: `staging.kwangle.weather`
+  
+- `values-production.yaml`: Production environment configuration
+  - 3 replicas minimum (HA)
+  - Info logging
+  - Production resource limits
+  - Host: `api.kwangle.weather`
+  - Stricter PodDisruptionBudget
+
+**Dynamic Values** (set via `--set`):
+- `weatherApi.image.tag=${BUILD_NUMBER}`
+- `global.aws.accountId=${AWS_ACCOUNT_ID}`
+- `global.aws.region=${AWS_REGION}`
+
+#### Deployment Safety Features
+
+**Helm Atomic Deployments**:
+- `--atomic`: Automatic rollback if deployment fails
+- `--wait`: Wait for all resources to reach ready state
+- `--timeout`: Maximum time to wait before rollback
+
+**Helm Diff**:
+- Visual comparison before deployment
+- Shows exact resource changes
+- Prevents unexpected modifications
+- Required approval after viewing diff
+
+**Revision History**:
+```bash
+# View deployment history
+helm history max-weather -n weather-${env}
+
+# Rollback to specific revision
+helm rollback max-weather <REVISION> -n weather-${env}
+```
+
+**Pod Disruption Budget**:
+- Ensures minimum availability during updates
+- Staging: minAvailable=1
+- Production: minAvailable=2
+
+**Rolling Update Strategy**:
+- MaxSurge: 1 (one extra pod during update)
+- MaxUnavailable: 0 (zero downtime)
+
+#### Jenkins Pipeline Environment
+
+**Container Images**:
+- `docker:24-dind` - Docker builds
+- `bitnami/kubectl:1.31` - Kubernetes operations
+- `alpine/helm:3.13.0` - Helm deployments
+- `amazon/aws-cli:2.13.0` - AWS operations
+
+**Required Jenkins Credentials**:
+- `aws-account-id`: AWS Account ID (Secret Text)
+- `aws-credentials`: AWS Access Keys (AWS Credentials)
+
+**Environment Variables**:
+```groovy
+AWS_REGION = 'us-east-1'
+ECR_REPOSITORY = 'max-weather/weather-api'
+HELM_RELEASE_NAME = 'max-weather'
+HELM_CHART_PATH = './helm/max-weather'
+EKS_CLUSTER_NAME_STAGING = 'max-weather-staging-cluster'
+EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-production-cluster'
+```
+
+#### Key Benefits of Helm Integration
+
+1. **Version Control**: All deployments tracked in Helm history
+2. **Declarative**: Define desired state, Helm manages transitions
+3. **Rollback Safety**: Easy rollback to any previous version
+4. **Diff Visibility**: See changes before applying
+5. **Atomic Operations**: All-or-nothing deployments
+6. **Template Reusability**: Single chart for multiple environments
+7. **Release Management**: Named releases with metadata
+8. **Audit Trail**: Complete deployment history
 
 ### 10. Security
 

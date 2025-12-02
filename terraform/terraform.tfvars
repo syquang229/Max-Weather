@@ -19,7 +19,7 @@ enable_nat_gateway = true
 single_nat_gateway = false
 
 # EKS Configuration
-eks_cluster_version                = "1.28"
+eks_cluster_version                = "1.31"
 eks_cluster_endpoint_public_access = true
 
 eks_node_groups = {
@@ -45,21 +45,21 @@ cloudwatch_log_retention_days = 30
 
 # Alarm Email Endpoints
 alarm_email_endpoints = [
-  "devops@maxweather.com",
-  "oncall@maxweather.com"
+  "devops@kwangle.weather",
+  "oncall@kwangle.weather"
 ]
 
 # Cognito Configuration
 cognito_callback_urls = [
-  "https://api.maxweather.com/callback",
+  "https://api.kwangle.weather/callback",
   "http://localhost:3000/callback"  # For local development
 ]
 
 cognito_logout_urls = [
-  "https://api.maxweather.com/logout",
+  "https://api.kwangle.weather/logout",
   "http://localhost:3000/logout"
 ]
 
 # API Gateway Configuration
-api_domain_name = "api.maxweather.com"
+api_domain_name = "api.kwangle.weather"
 api_stage_name  = "v1"

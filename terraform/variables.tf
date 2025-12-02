@@ -62,7 +62,7 @@ variable "single_nat_gateway" {
 variable "eks_cluster_version" {
   description = "Kubernetes version for EKS cluster"
   type        = string
-  default     = "1.28"
+  default     = "1.31"
 }
 
 variable "eks_cluster_endpoint_public_access" {
@@ -128,20 +128,20 @@ variable "alarm_email_endpoints" {
 variable "cognito_callback_urls" {
   description = "Callback URLs for Cognito user pool"
   type        = list(string)
-  default     = ["https://api.maxweather.com/callback"]
+  default     = ["https://api.kwangle.weather/callback"]
 }
 
 variable "cognito_logout_urls" {
   description = "Logout URLs for Cognito user pool"
   type        = list(string)
-  default     = ["https://api.maxweather.com/logout"]
+  default     = ["https://api.kwangle.weather/logout"]
 }
 
 # API Gateway Variables
 variable "api_domain_name" {
   description = "Custom domain name for API Gateway"
   type        = string
-  default     = "api.maxweather.com"
+  default     = "api.kwangle.weather"
 }
 
 variable "api_stage_name" {
