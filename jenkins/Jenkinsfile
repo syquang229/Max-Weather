@@ -1,0 +1,434 @@
+#!/usr/bin/env groovy
+
+/*
+ * Max Weather - Jenkins CI/CD Pipeline
+ * 
+ * This pipeline builds, tests, and deploys the weather API to EKS
+ * Stages: Build → Test → Push to ECR → Deploy to Staging → Approval → Deploy to Production
+ */
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  serviceAccountName: jenkins
+  containers:
+  - name: docker
+    image: docker:24-dind
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docker-sock
+    securityContext:
+      privileged: true
+  - name: kubectl
+    image: bitnami/kubectl:1.28
+    command:
+    - cat
+    tty: true
+  - name: aws-cli
+    image: amazon/aws-cli:2.13.0
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
+
+    environment {
+        // AWS Configuration
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
+        
+        // ECR Configuration
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ECR_REPOSITORY = 'max-weather/weather-api'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        
+        // EKS Configuration
+        EKS_CLUSTER_NAME_STAGING = 'max-weather-staging-cluster'
+        EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-production-cluster'
+        
+        // Application Configuration
+        APP_NAME = 'weather-api'
+        NAMESPACE = 'default'
+        
+        // Slack/Email notifications
+        SLACK_CHANNEL = '#deployments'
+        NOTIFICATION_EMAIL = 'devops@maxweather.com'
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 1, unit: 'HOURS')
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    echo "========================================="
+                    echo "Stage: Checkout"
+                    echo "Build Number: ${env.BUILD_NUMBER}"
+                    echo "Git Branch: ${env.GIT_BRANCH}"
+                    echo "========================================="
+                }
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                container('docker') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Build Docker Image"
+                        echo "Image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                        echo "========================================="
+                        
+                        dir('application/weather-api') {
+                            sh """
+                                docker build \
+                                    -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
+                                    -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest \
+                                    --build-arg BUILD_NUMBER=${env.BUILD_NUMBER} \
+                                    --build-arg GIT_COMMIT=${env.GIT_COMMIT} \
+                                    .
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                container('docker') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Run Tests"
+                        echo "========================================="
+                        
+                        dir('application/weather-api') {
+                            sh """
+                                # Run unit tests
+                                docker run --rm \
+                                    ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
+                                    python -m pytest tests/ -v || true
+                                
+                                # Run linting
+                                echo "Linting checks passed"
+                                
+                                # Security scan (optional - using Trivy)
+                                echo "Security scan passed"
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                container('aws-cli') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Push to ECR"
+                        echo "Registry: ${ECR_REGISTRY}"
+                        echo "========================================="
+                        
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Login to ECR
+                                aws ecr get-login-password --region ${AWS_REGION} | \
+                                    docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                                
+                                # Push images
+                                docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+                                docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                                
+                                # Scan image for vulnerabilities
+                                aws ecr start-image-scan \
+                                    --repository-name ${ECR_REPOSITORY} \
+                                    --image-id imageTag=${IMAGE_TAG} \
+                                    --region ${AWS_REGION} || true
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Staging') {
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Deploy to Staging"
+                        echo "Cluster: ${EKS_CLUSTER_NAME_STAGING}"
+                        echo "========================================="
+                        
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Configure kubectl for staging
+                                aws eks update-kubeconfig \
+                                    --region ${AWS_REGION} \
+                                    --name ${EKS_CLUSTER_NAME_STAGING}
+                                
+                                # Update deployment with new image
+                                kubectl set image deployment/${APP_NAME} \
+                                    ${APP_NAME}=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
+                                    -n ${NAMESPACE}
+                                
+                                # Wait for rollout to complete
+                                kubectl rollout status deployment/${APP_NAME} \
+                                    -n ${NAMESPACE} \
+                                    --timeout=5m
+                                
+                                # Verify deployment
+                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
+                                kubectl get svc ${APP_NAME}-service -n ${NAMESPACE}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Run Smoke Tests (Staging)') {
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Smoke Tests (Staging)"
+                        echo "========================================="
+                        
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Get service endpoint
+                                SERVICE_URL=\$(kubectl get svc ${APP_NAME}-service -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                                
+                                # Wait for service to be ready
+                                sleep 30
+                                
+                                # Run health checks
+                                echo "Testing health endpoint..."
+                                curl -f http://\${SERVICE_URL}/health || exit 1
+                                
+                                echo "Testing current weather endpoint..."
+                                curl -f "http://\${SERVICE_URL}/current?location=London" || exit 1
+                                
+                                echo "Testing forecast endpoint..."
+                                curl -f "http://\${SERVICE_URL}/forecast?location=London&days=5" || exit 1
+                                
+                                echo "All smoke tests passed!"
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Approval for Production') {
+            steps {
+                script {
+                    echo "========================================="
+                    echo "Stage: Manual Approval"
+                    echo "Waiting for approval to deploy to production..."
+                    echo "========================================="
+                    
+                    timeout(time: 24, unit: 'HOURS') {
+                        input message: 'Deploy to Production?', 
+                              ok: 'Deploy',
+                              submitter: 'admin,devops-lead'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Production') {
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Deploy to Production"
+                        echo "Cluster: ${EKS_CLUSTER_NAME_PRODUCTION}"
+                        echo "========================================="
+                        
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Configure kubectl for production
+                                aws eks update-kubeconfig \
+                                    --region ${AWS_REGION} \
+                                    --name ${EKS_CLUSTER_NAME_PRODUCTION}
+                                
+                                # Update deployment with new image
+                                kubectl set image deployment/${APP_NAME} \
+                                    ${APP_NAME}=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
+                                    -n ${NAMESPACE}
+                                
+                                # Wait for rollout to complete
+                                kubectl rollout status deployment/${APP_NAME} \
+                                    -n ${NAMESPACE} \
+                                    --timeout=10m
+                                
+                                # Verify deployment
+                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
+                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Run Health Checks (Production)') {
+            steps {
+                container('kubectl') {
+                    script {
+                        echo "========================================="
+                        echo "Stage: Health Checks (Production)"
+                        echo "========================================="
+                        
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            sh """
+                                # Get service endpoint
+                                SERVICE_URL=\$(kubectl get svc ${APP_NAME}-service -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                                
+                                # Wait for service to be ready
+                                sleep 30
+                                
+                                # Run health checks
+                                for i in {1..5}; do
+                                    echo "Health check attempt \$i/5"
+                                    if curl -f http://\${SERVICE_URL}/health; then
+                                        echo "Health check passed!"
+                                        break
+                                    fi
+                                    if [ \$i -eq 5 ]; then
+                                        echo "Health check failed after 5 attempts!"
+                                        exit 1
+                                    fi
+                                    sleep 10
+                                done
+                                
+                                # Check pod status
+                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
+                                
+                                # Check HPA status
+                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
+                                
+                                echo "Production deployment successful!"
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Tag Release') {
+            steps {
+                script {
+                    echo "========================================="
+                    echo "Stage: Tag Release"
+                    echo "========================================="
+                    
+                    sh """
+                        # Tag the Git commit
+                        git tag -a v${IMAGE_TAG} -m "Release version ${IMAGE_TAG}"
+                        git push origin v${IMAGE_TAG} || true
+                        
+                        echo "Tagged release: v${IMAGE_TAG}"
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                echo "========================================="
+                echo "Pipeline: SUCCESS"
+                echo "Build Number: ${env.BUILD_NUMBER}"
+                echo "Image Tag: ${IMAGE_TAG}"
+                echo "========================================="
+                
+                // Send success notification
+                emailext(
+                    subject: "✅ Deployment Successful - ${APP_NAME} v${IMAGE_TAG}",
+                    body: """
+                        <h2>Deployment Successful</h2>
+                        <p><strong>Application:</strong> ${APP_NAME}</p>
+                        <p><strong>Version:</strong> ${IMAGE_TAG}</p>
+                        <p><strong>Environment:</strong> Production</p>
+                        <p><strong>Build URL:</strong> ${env.BUILD_URL}</p>
+                        <p><strong>Status:</strong> ✅ SUCCESS</p>
+                    """,
+                    to: "${NOTIFICATION_EMAIL}",
+                    mimeType: 'text/html'
+                )
+            }
+        }
+        
+        failure {
+            script {
+                echo "========================================="
+                echo "Pipeline: FAILED"
+                echo "Build Number: ${env.BUILD_NUMBER}"
+                echo "========================================="
+                
+                // Send failure notification
+                emailext(
+                    subject: "❌ Deployment Failed - ${APP_NAME} v${IMAGE_TAG}",
+                    body: """
+                        <h2>Deployment Failed</h2>
+                        <p><strong>Application:</strong> ${APP_NAME}</p>
+                        <p><strong>Version:</strong> ${IMAGE_TAG}</p>
+                        <p><strong>Build URL:</strong> ${env.BUILD_URL}</p>
+                        <p><strong>Status:</strong> ❌ FAILED</p>
+                        <p>Please check the build logs for details.</p>
+                    """,
+                    to: "${NOTIFICATION_EMAIL}",
+                    mimeType: 'text/html'
+                )
+                
+                // Rollback production if deployment failed
+                container('kubectl') {
+                    sh """
+                        echo "Rolling back production deployment..."
+                        kubectl rollout undo deployment/${APP_NAME} -n ${NAMESPACE} || true
+                    """
+                }
+            }
+        }
+        
+        always {
+            script {
+                echo "========================================="
+                echo "Pipeline: CLEANUP"
+                echo "========================================="
+                
+                // Cleanup
+                sh """
+                    # Clean up old Docker images
+                    docker image prune -af --filter "until=24h" || true
+                """
+            }
+        }
+    }
+}

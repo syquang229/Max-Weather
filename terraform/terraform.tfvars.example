@@ -1,0 +1,65 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and update with your values
+
+# General Configuration
+aws_region   = "us-east-1"
+project_name = "max-weather"
+environment  = "production"
+
+# VPC Configuration
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+
+# NAT Gateway Configuration
+# Set to true for production (HA), false for cost savings in dev
+enable_nat_gateway = true
+# Set to false for HA (one NAT per AZ), true for cost savings (single NAT)
+single_nat_gateway = false
+
+# EKS Configuration
+eks_cluster_version                = "1.28"
+eks_cluster_endpoint_public_access = true
+
+eks_node_groups = {
+  general = {
+    desired_size   = 3
+    min_size       = 2
+    max_size       = 6
+    instance_types = ["t3.medium"]
+    capacity_type  = "ON_DEMAND"  # Use "SPOT" for cost savings in non-production
+    disk_size      = 50
+    labels = {
+      role = "general"
+    }
+    taints = []
+  }
+}
+
+# ECR Configuration
+ecr_repositories = ["weather-api"]
+
+# CloudWatch Configuration
+cloudwatch_log_retention_days = 30
+
+# Alarm Email Endpoints
+alarm_email_endpoints = [
+  "devops@maxweather.com",
+  "oncall@maxweather.com"
+]
+
+# Cognito Configuration
+cognito_callback_urls = [
+  "https://api.maxweather.com/callback",
+  "http://localhost:3000/callback"  # For local development
+]
+
+cognito_logout_urls = [
+  "https://api.maxweather.com/logout",
+  "http://localhost:3000/logout"
+]
+
+# API Gateway Configuration
+api_domain_name = "api.maxweather.com"
+api_stage_name  = "v1"

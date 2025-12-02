@@ -1,0 +1,480 @@
+{
+  "info": {
+    "name": "Max Weather API",
+    "description": "Weather API endpoints with OAuth2 authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "max-weather-api-collection",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      {
+        "key": "tokenName",
+        "value": "Max Weather Token",
+        "type": "string"
+      },
+      {
+        "key": "accessTokenUrl",
+        "value": "https://{{cognito_domain}}.auth.{{aws_region}}.amazoncognito.com/oauth2/token",
+        "type": "string"
+      },
+      {
+        "key": "authUrl",
+        "value": "https://{{cognito_domain}}.auth.{{aws_region}}.amazoncognito.com/oauth2/authorize",
+        "type": "string"
+      },
+      {
+        "key": "grant_type",
+        "value": "authorization_code",
+        "type": "string"
+      },
+      {
+        "key": "clientId",
+        "value": "{{cognito_client_id}}",
+        "type": "string"
+      },
+      {
+        "key": "clientSecret",
+        "value": "{{cognito_client_secret}}",
+        "type": "string"
+      },
+      {
+        "key": "scope",
+        "value": "openid email profile",
+        "type": "string"
+      },
+      {
+        "key": "redirect_uri",
+        "value": "https://oauth.pstmn.io/v1/callback",
+        "type": "string"
+      },
+      {
+        "key": "addTokenTo",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://{{api_gateway_id}}.execute-api.{{aws_region}}.amazonaws.com/v1",
+      "type": "string"
+    },
+    {
+      "key": "aws_region",
+      "value": "us-east-1",
+      "type": "string"
+    },
+    {
+      "key": "cognito_domain",
+      "value": "max-weather-production",
+      "type": "string"
+    },
+    {
+      "key": "api_gateway_id",
+      "value": "your-api-gateway-id",
+      "type": "string"
+    },
+    {
+      "key": "cognito_client_id",
+      "value": "your-client-id",
+      "type": "string"
+    },
+    {
+      "key": "cognito_client_secret",
+      "value": "your-client-secret",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Health check endpoint - no authentication required"
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ready",
+              "host": ["{{base_url}}"],
+              "path": ["ready"]
+            },
+            "description": "Readiness check endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "API Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            },
+            "description": "Get API information and available endpoints"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Weather Endpoints (Authenticated)",
+      "item": [
+        {
+          "name": "Get Current Weather - London",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/current?location=London",
+              "host": ["{{base_url}}"],
+              "path": ["current"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "London",
+                  "description": "City name"
+                }
+              ]
+            },
+            "description": "Get current weather data for London"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Weather - New York",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/current?location=New York",
+              "host": ["{{base_url}}"],
+              "path": ["current"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "New York",
+                  "description": "City name"
+                }
+              ]
+            },
+            "description": "Get current weather data for New York"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Weather - Tokyo",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/current?location=Tokyo",
+              "host": ["{{base_url}}"],
+              "path": ["current"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Tokyo",
+                  "description": "City name"
+                }
+              ]
+            },
+            "description": "Get current weather data for Tokyo"
+          },
+          "response": []
+        },
+        {
+          "name": "Get 5-Day Forecast - London",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/forecast?location=London&days=5",
+              "host": ["{{base_url}}"],
+              "path": ["forecast"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "London",
+                  "description": "City name"
+                },
+                {
+                  "key": "days",
+                  "value": "5",
+                  "description": "Number of forecast days (1-14)"
+                }
+              ]
+            },
+            "description": "Get 5-day weather forecast for London"
+          },
+          "response": []
+        },
+        {
+          "name": "Get 7-Day Forecast - Paris",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/forecast?location=Paris&days=7",
+              "host": ["{{base_url}}"],
+              "path": ["forecast"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Paris",
+                  "description": "City name"
+                },
+                {
+                  "key": "days",
+                  "value": "7",
+                  "description": "Number of forecast days (1-14)"
+                }
+              ]
+            },
+            "description": "Get 7-day weather forecast for Paris"
+          },
+          "response": []
+        },
+        {
+          "name": "Get 14-Day Forecast - Sydney",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/forecast?location=Sydney&days=14",
+              "host": ["{{base_url}}"],
+              "path": ["forecast"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Sydney",
+                  "description": "City name"
+                },
+                {
+                  "key": "days",
+                  "value": "14",
+                  "description": "Number of forecast days (1-14)"
+                }
+              ]
+            },
+            "description": "Get 14-day weather forecast for Sydney"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Available Cities",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/cities",
+              "host": ["{{base_url}}"],
+              "path": ["cities"]
+            },
+            "description": "Get list of all available cities"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Handling Tests",
+      "item": [
+        {
+          "name": "Missing Location Parameter",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/current",
+              "host": ["{{base_url}}"],
+              "path": ["current"]
+            },
+            "description": "Test error handling when location parameter is missing"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid City Name",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/current?location=InvalidCity",
+              "host": ["{{base_url}}"],
+              "path": ["current"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "InvalidCity"
+                }
+              ]
+            },
+            "description": "Test error handling for invalid city name"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Days Parameter",
+          "request": {
+            "auth": {
+              "type": "oauth2"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/forecast?location=London&days=20",
+              "host": ["{{base_url}}"],
+              "path": ["forecast"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "London"
+                },
+                {
+                  "key": "days",
+                  "value": "20",
+                  "description": "Invalid - max is 14"
+                }
+              ]
+            },
+            "description": "Test error handling for invalid days parameter (max 14)"
+          },
+          "response": []
+        },
+        {
+          "name": "Unauthorized Request",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/current?location=London",
+              "host": ["{{base_url}}"],
+              "path": ["current"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "London"
+                }
+              ]
+            },
+            "description": "Test authentication requirement - should return 401"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script to add custom headers or log requests",
+          "console.log('Request to:', pm.request.url.toString());"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Common tests for all requests",
+          "pm.test('Response time is less than 2000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "pm.test('Response has valid JSON', function () {",
+          "    pm.response.to.have.jsonBody();",
+          "});"
+        ]
+      }
+    }
+  ]
+}
