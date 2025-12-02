@@ -54,7 +54,7 @@ Jump to sections:
 |-----------|------|------------------|
 | **Lambda Authorizer** | `lambda/authorizer/lambda_function.py` | JWT validation, IAM policy generation |
 | **Weather API** | `application/weather-api/app.py` | OpenWeatherMap integration, endpoints |
-| **API Gateway Setup** | `docs/API_GATEWAY_MANUAL_SETUP.md` | Step-by-step manual setup |
+| **API Gateway Setup** | `docs/api_gateway_setup.md` | Step-by-step manual setup |
 | **Kubernetes Deployment** | `helm/max-weather` | HA config, health probes, auto-scaling |
 | **Terraform Infrastructure** | `terraform/main.tf` | Modularized IaC |
 
@@ -65,11 +65,11 @@ Jump to sections:
 ```
 script-clone/
 ├── docs/
-│   ├── COMPLETE_GUIDE.md          ← You are here!
-│   ├── API_GATEWAY_MANUAL_SETUP.md
-│   ├── LAMBDA_AUTHORIZER.md
-│   ├── ARCHITECTURE.md
-│   └── POSTMAN_GUIDE.md
+│   ├── complete_guide.md          ← You are here!
+│   ├── api_gateway_setup.md
+│   ├── lambda.md
+│   ├── architecture.md
+│   └── postman.md
 │
 ├── lambda/authorizer/              ← Custom Lambda Authorizer
 │   ├── lambda_function.py
@@ -102,7 +102,7 @@ script-clone/
 - [x] **Nginx Ingress Controller**
 - [x] **Nginx Ingress**
 - [x] **Jenkins Pipeline** → `jenkins/Jenkinsfile`
-- [x] **API Gateway** → `docs/API_GATEWAY_MANUAL_SETUP.md` (manual setup guide)
+- [x] **API Gateway** → `docs/api_gateway_setup.md` (manual setup guide)
 - [x] **Postman Collection** → `postman/max-weather-api.postman_collection.json`
 
 ### Implementation Requirements (All ✅)
@@ -145,7 +145,7 @@ script-clone/
 **Why**: Assessment allows manual API Gateway creation
 
 **Implementation**:
-- Step-by-step guide: `docs/API_GATEWAY_MANUAL_SETUP.md`
+- Step-by-step guide: `docs/api_gateway_setup.md`
 - Terraform module also available as alternative
 
 ## 🧪 Quick Testing Guide
@@ -240,7 +240,7 @@ spec:
 | **High Availability** | Multi-AZ, 3+ replicas | `kubernetes/deployment.yaml` |
 | **Auto-Scaling** | HPA + Cluster Autoscaler | `kubernetes/hpa.yaml` |
 | **IaC** | Modularized Terraform | `terraform/modules/` |
-| **API Gateway** | Proxy integration | `docs/API_GATEWAY_MANUAL_SETUP.md` |
+| **API Gateway** | Proxy integration | `docs/api_gateway_setup.md` |
 | **Authorization** | Lambda Authorizer | `lambda/authorizer/` |
 | **Public API** | OpenWeatherMap | `application/weather-api/app.py` |
 | **Monitoring** | CloudWatch + Fluent Bit | `kubernetes/fluent-bit/` |
@@ -267,7 +267,7 @@ spec:
 
 1. **Deploy Lambda Authorizer** → See [Lambda Authorizer Deployment](#lambda-authorizer-deployment) section below
 2. **Review Architecture** → See [Architecture Overview](#architecture-overview) section
-3. **Setup API Gateway** → Follow `docs/API_GATEWAY_MANUAL_SETUP.md`
+3. **Setup API Gateway** → Follow `docs/api_gateway_setup.md`
 4. **Deploy Infrastructure** → See [Deployment Guide](#deployment-guide) section below
 5. **Test the API** → See [Testing the API](#testing-the-api) section below
 
@@ -334,7 +334,7 @@ All paths (`/current`, `/forecast`, `/cities`, etc.) handled by single proxy res
 
 **Implementation**:
 - **Both options provided**:
-  1. **Manual Setup** (Recommended for assessment): Step-by-step guide in `docs/API_GATEWAY_MANUAL_SETUP.md`
+  1. **Manual Setup** (Recommended for assessment): Step-by-step guide in `docs/api_gateway_setup.md`
   2. **Terraform Module** (Optional): `terraform/modules/api-gateway/` available if preferred
 
 **Manual Setup Process**:
@@ -345,7 +345,7 @@ All paths (`/current`, `/forecast`, `/cities`, etc.) handled by single proxy res
 5. Attach authorizer to method
 6. Deploy to stage
 
-**Documentation**: `docs/API_GATEWAY_MANUAL_SETUP.md`
+**Documentation**: `docs/api_gateway_setup.md`
 
 ### 5. API Authorization Required ✓
 **Requirement**: "You must do API authorization as part of this assignment"
@@ -440,7 +440,7 @@ script-clone/
 │       └── README.md                   # Deployment guide
 │
 └── docs/
-    └── API_GATEWAY_MANUAL_SETUP.md    # Step-by-step API Gateway setup
+    └── api_gateway_setup.md    # Step-by-step API Gateway setup
 ```
 
 ### Updated Components
@@ -492,7 +492,7 @@ aws lambda create-function \
   --zip-file fileb://authorizer.zip \
   --environment Variables="{JWT_SECRET=your-secret-key}"
 
-# 6. Create API Gateway manually (follow docs/API_GATEWAY_MANUAL_SETUP.md)
+# 6. Create API Gateway manually (follow docs/api_gateway_setup.md)
 # - Create VPC Link
 # - Create REST API
 # - Create proxy resource
@@ -702,7 +702,7 @@ Authorization: Bearer <token>
 
 ### All-in-One Guide
 
-This document (COMPLETE_GUIDE.md) contains all core documentation merged from:
+This document (complete_guide.md) contains all core documentation merged from:
 - Implementation requirements & approach
 - Project deliverables summary
 - Deployment procedures
@@ -710,10 +710,10 @@ This document (COMPLETE_GUIDE.md) contains all core documentation merged from:
 
 ### Component-Specific Guides
 
-1. **docs/API_GATEWAY_MANUAL_SETUP.md** - API Gateway manual setup
-2. **docs/LAMBDA_AUTHORIZER.md** - Lambda authorizer setup
-3. **docs/POSTMAN_GUIDE.md** - API testing guide
-4. **docs/ARCHITECTURE.md** - Architecture details
+1. **docs/api_gateway_setup.md** - API Gateway manual setup
+2. **docs/lambda.md** - Lambda authorizer setup
+3. **docs/postman.md** - API testing guide
+4. **docs/architecture.md** - Architecture details
 
 ## Quick Reference
 
@@ -762,7 +762,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 1. ✅ Review implementation notes (this file)
 2. Deploy Lambda authorizer - see `lambda/authorizer/README.md`
-3. Create API Gateway - see `docs/API_GATEWAY_MANUAL_SETUP.md`
+3. Create API Gateway - see `docs/api_gateway_setup.md`
 4. Get OpenWeatherMap API key - visit openweathermap.org
 5. Configure secrets in Kubernetes
 6. Test API with Postman collection
@@ -824,7 +824,7 @@ For issues or questions:
 **Requirement**: "It is not necessary to create an API gateway using the terraform scripts, you can create APIs manually using the AWS console if it is easier"
 
 **Implementation**:
-- **Manual setup guide**: `docs/API_GATEWAY_MANUAL_SETUP.md` (step-by-step)
+- **Manual setup guide**: `docs/api_gateway_setup.md` (step-by-step)
 - **Terraform module**: `terraform/modules/api-gateway/` (optional alternative)
 - Both approaches fully documented
 
@@ -845,12 +845,12 @@ script-clone/
 ├── 📄 README.md                        ← Entry point
 │
 ├── docs/                               ← **All Documentation**
-│   ├── COMPLETE_GUIDE.md               │   This file - comprehensive guide
-│   ├── API_GATEWAY_MANUAL_SETUP.md     │   API Gateway setup
-│   ├── LAMBDA_AUTHORIZER.md            │   Lambda authorizer guide
-│   ├── POSTMAN_GUIDE.md                │   API testing guide
-│   ├── ARCHITECTURE.md                 │   Architecture details
-│   └── INDEX.md                        │   Documentation navigation
+│   ├── complete_guide.md               │   This file - comprehensive guide
+│   ├── api_gateway_setup.md     │   API Gateway setup
+│   ├── lambda.md            │   Lambda authorizer guide
+│   ├── postman.md                │   API testing guide
+│   ├── architecture.md                 │   Architecture details
+│   └── index.md                        │   Documentation navigation
 │
 ├── lambda/
 │   └── authorizer/                     ← **Custom Lambda Authorizer**
@@ -967,7 +967,7 @@ kubectl set env deployment/weather-api --from=secret/weather-api-secrets
 
 #### 4. Create API Gateway (Manual)
 
-Follow the step-by-step guide: **`docs/API_GATEWAY_MANUAL_SETUP.md`**
+Follow the step-by-step guide: **`docs/api_gateway_setup.md`**
 
 Quick steps:
 1. Get NLB DNS: `kubectl get svc -n kube-system nginx-ingress-controller`
@@ -1113,10 +1113,10 @@ curl -H "Authorization: Bearer $TOKEN" \
 - Architecture overview
 
 **Additional documentation**:
-1. **[docs/API_GATEWAY_MANUAL_SETUP.md](../docs/API_GATEWAY_MANUAL_SETUP.md)** - API Gateway setup guide
-2. **[docs/LAMBDA_AUTHORIZER.md](../docs/LAMBDA_AUTHORIZER.md)** - Lambda authorizer guide
-3. **[docs/POSTMAN_GUIDE.md](../docs/POSTMAN_GUIDE.md)** - API testing guide
-4. **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** - Detailed architecture
+1. **[docs/api_gateway_setup.md](../docs/api_gateway_setup.md)** - API Gateway setup guide
+2. **[docs/lambda.md](../docs/lambda.md)** - Lambda authorizer guide
+3. **[docs/postman.md](../docs/postman.md)** - API testing guide
+4. **[docs/architecture.md](../docs/architecture.md)** - Detailed architecture
 
 ## ✅ Assessment Deliverables
 
@@ -1129,7 +1129,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 | 5 | Nginx Ingress Controller | ✅ | `helm/max-weather/templates/ingress.yaml` |
 | 6 | Nginx Ingress | ✅ | `helm/max-weather/templates/ingress.yaml` |
 | 7 | **Jenkins Pipeline with Helm** | ✅ | `jenkins/Jenkinsfile` (Helm deployment) |
-| 8 | API Gateway Integration | ✅ | `docs/API_GATEWAY_MANUAL_SETUP.md` |
+| 8 | API Gateway Integration | ✅ | `docs/api_gateway_setup.md` |
 | 9 | Postman Collection with Auth | ✅ | `postman/max-weather-api.postman_collection.json` |
 | 10 | **API Authorization (Lambda)** | ✅ | `lambda/authorizer/` |
 | 11 | **Public API Integration** | ✅ | `application/weather-api/app.py` |
@@ -1547,11 +1547,11 @@ See the [Deployment Steps](#deployment-steps) section below for detailed step-by
 script-clone/
 ├── README.md                          # Main documentation
 ├── docs/
-│   ├── COMPLETE_GUIDE.md              # This comprehensive guide
-│   ├── API_GATEWAY_MANUAL_SETUP.md    # API Gateway setup
-│   ├── LAMBDA_AUTHORIZER.md           # Lambda authorizer
-│   ├── ARCHITECTURE.md                # Architecture details
-│   └── POSTMAN_GUIDE.md               # API testing
+│   ├── complete_guide.md              # This comprehensive guide
+│   ├── api_gateway_setup.md    # API Gateway setup
+│   ├── lambda.md           # Lambda authorizer
+│   ├── architecture.md                # Architecture details
+│   └── postman.md               # API testing
 ├── terraform/
 │   ├── main.tf                        # Root module
 │   ├── variables.tf                   # Input variables
@@ -1670,11 +1670,11 @@ This project demonstrates:
 
 ## 📚 Documentation Index
 
-1. **docs/COMPLETE_GUIDE.md** - This comprehensive guide
-2. **docs/API_GATEWAY_MANUAL_SETUP.md** - API Gateway setup guide
-3. **docs/LAMBDA_AUTHORIZER.md** - Lambda authorizer setup
-4. **docs/ARCHITECTURE.md** - Architecture details
-5. **docs/POSTMAN_GUIDE.md** - API testing guide
+1. **docs/complete_guide.md** - This comprehensive guide
+2. **docs/api_gateway_setup.md** - API Gateway setup guide
+3. **docs/lambda.md** - Lambda authorizer setup
+4. **docs/architecture.md** - Architecture details
+5. **docs/postman.md** - API testing guide
 6. **terraform/modules/*/README.md** - Module-specific docs (create as needed)
 
 ## 🤝 Contributing
@@ -2434,7 +2434,7 @@ curl -H "Authorization: Bearer $TOKEN" "${API_URL}/current?location=London"
 ```
 
 ### 4. Import Postman Collection
-See [docs/POSTMAN_GUIDE.md](POSTMAN_GUIDE.md) for detailed instructions on testing with Postman.
+See [docs/postman.md](postman.md) for detailed instructions on testing with Postman.
 
 ## Monitoring & Logging
 
