@@ -18,11 +18,6 @@ variable "cognito_user_pool_arn" {
   type        = string
 }
 
-variable "api_domain_name" {
-  description = "Custom domain name for API"
-  type        = string
-}
-
 variable "stage_name" {
   description = "API Gateway stage name"
   type        = string
@@ -32,7 +27,7 @@ variable "stage_name" {
 variable "nlb_dns_name" {
   description = "DNS name of the Network Load Balancer"
   type        = string
-  default     = "internal-nlb.local"  # Placeholder - will be updated after NLB creation
+  default     = "internal-nlb.local" # Placeholder - will be updated after NLB creation
 }
 
 variable "tags" {

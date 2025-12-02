@@ -62,8 +62,11 @@ cd terraform
 terraform init
 terraform apply
 
-# 3. Deploy Application
-kubectl apply -f kubernetes/
+# 3. Deploy Application with Helm
+cd helm
+helm install max-weather ./max-weather \
+  --namespace weather-production \
+  --values ./max-weather/values-production.yaml
 
 # 4. Create API Gateway
 # Follow: docs/API_GATEWAY_MANUAL_SETUP.md
@@ -96,7 +99,15 @@ script-clone/
 │   │   ├── cognito/ (optional)
 │   │   └── api-gateway/ (optional)
 │
-├── kubernetes/                     # K8s manifests
+├── helm/
+│   └── max-weather/               # Helm chart (v1.0.0)
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       ├── values-staging.yaml
+│       ├── values-production.yaml
+│       └── templates/             # 20 K8s templates
+│
+├── kubernetes/                     # Legacy K8s manifests
 │   ├── deployment.yaml
 │   ├── service.yaml
 │   ├── hpa.yaml
@@ -133,8 +144,9 @@ script-clone/
 |-----------|--------|----------|
 | Architecture Diagram | ✅ | `docs/ARCHITECTURE.md` |
 | Terraform (Modularized) | ✅ | `terraform/modules/` |
-| Kubernetes Manifests | ✅ | `kubernetes/` |
-| Jenkins Pipeline | ✅ | `jenkins/Jenkinsfile` |
+| Helm Chart | ✅ | `helm/max-weather/` |
+| Kubernetes Manifests | ✅ | `kubernetes/` (legacy) |
+| Jenkins Pipeline | ✅ | `jenkins/Jenkinsfile` (Helm deployment) |
 | API Gateway | ✅ | `docs/API_GATEWAY_MANUAL_SETUP.md` |
 | Lambda Authorizer | ✅ | `lambda/authorizer/` |
 | Postman Collection | ✅ | `postman/` |
@@ -186,5 +198,6 @@ For issues or questions:
 **Project**: Max Weather Platform  
 **Version**: 1.0.0  
 **Last Updated**: December 2, 2025  
+**Develop by**: Kwang Le
 
 **For complete documentation, see**: [`docs/COMPLETE_GUIDE.md`](docs/COMPLETE_GUIDE.md)

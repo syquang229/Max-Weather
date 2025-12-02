@@ -63,7 +63,7 @@ kubectl get hpa -n weather-${env}
 |-----------|-------------|---------|
 | `global.aws.accountId` | AWS Account ID | `"xxxxxxxxx"` |
 | `global.aws.region` | AWS Region | `us-east-1` |
-| `global.cluster.name` | EKS cluster name | `max-weather-cluster` |
+| `global.cluster.name` | EKS cluster name | `max-weather-production-cluster` |
 | `weatherApi.enabled` | Enable weather API deployment | `true` |
 | `weatherApi.replicaCount` | Number of replicas | `2` |
 | `weatherApi.image.tag` | Docker image tag | `latest` |

@@ -1,7 +1,15 @@
 # IAM Module - IRSA (IAM Roles for Service Accounts)
 
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
 
 # IAM Role for Fluent Bit (CloudWatch logging)
 resource "aws_iam_role" "fluent_bit" {

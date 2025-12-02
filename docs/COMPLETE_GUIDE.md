@@ -55,7 +55,7 @@ Jump to sections:
 | **Lambda Authorizer** | `lambda/authorizer/lambda_function.py` | JWT validation, IAM policy generation |
 | **Weather API** | `application/weather-api/app.py` | OpenWeatherMap integration, endpoints |
 | **API Gateway Setup** | `docs/API_GATEWAY_MANUAL_SETUP.md` | Step-by-step manual setup |
-| **Kubernetes Deployment** | `kubernetes/deployment.yaml` | HA config, health probes, auto-scaling |
+| **Kubernetes Deployment** | `helm/max-weather` | HA config, health probes, auto-scaling |
 | **Terraform Infrastructure** | `terraform/main.tf` | Modularized IaC |
 
 ## 📁 Repository Structure
@@ -82,8 +82,13 @@ script-clone/
 │   └── requirements.txt
 │
 ├── terraform/modules/              ← 6 Terraform modules (VPC, EKS, etc.)
-├── kubernetes/                     ← All K8s manifests
-└── jenkins/Jenkinsfile             ← CI/CD pipeline
+├── helm/max-weather/               ← Helm chart for deployment
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   ├── values-staging.yaml
+│   ├── values-production.yaml
+│   └── templates/                  ← 20 K8s resource templates
+└── jenkins/Jenkinsfile             ← CI/CD pipeline with Helm
 ```
 
 ## ✅ Deliverables Checklist
@@ -92,10 +97,10 @@ script-clone/
 
 - [x] **Architecture Diagram** → `architecture/architecture-diagram.md`
 - [x] **Terraform Scripts (Modularized)** → `terraform/modules/` (6 modules)
-- [x] **Kubernetes Deployment YAML** → `kubernetes/deployment.yaml`
-- [x] **Kubernetes Service YAML** → `kubernetes/service.yaml`
-- [x] **Nginx Ingress Controller** → `kubernetes/ingress-controller.yaml`
-- [x] **Nginx Ingress** → `kubernetes/ingress.yaml`
+- [x] **Kubernetes Deployment YAML**
+- [x] **Kubernetes Service YAML**
+- [x] **Nginx Ingress Controller**
+- [x] **Nginx Ingress**
 - [x] **Jenkins Pipeline** → `jenkins/Jenkinsfile`
 - [x] **API Gateway** → `docs/API_GATEWAY_MANUAL_SETUP.md` (manual setup guide)
 - [x] **Postman Collection** → `postman/max-weather-api.postman_collection.json`
@@ -460,14 +465,15 @@ terraform init
 terraform apply -target=module.vpc -target=module.eks -target=module.ecr
 
 # 2. Configure kubectl
-aws eks update-kubeconfig --name max-weather-cluster --region us-east-1
+aws eks update-kubeconfig --name max-weather-production-cluster --region us-east-1
 
-# 3. Deploy Kubernetes resources
-kubectl apply -f kubernetes/deployment.yaml
-kubectl apply -f kubernetes/service.yaml
-kubectl apply -f kubernetes/hpa.yaml
-kubectl apply -f kubernetes/ingress-controller.yaml
-kubectl apply -f kubernetes/ingress.yaml
+# 3. Deploy application with Helm
+cd helm
+helm lint max-weather/
+helm install max-weather ./max-weather \
+  --namespace weather-production \
+  --values ./max-weather/values-production.yaml \
+  --create-namespace
 
 # 4. Get NLB DNS
 kubectl get svc -n kube-system nginx-ingress-controller
@@ -939,7 +945,7 @@ terraform init
 terraform apply -target=module.vpc -target=module.eks -target=module.ecr
 
 # Configure kubectl
-aws eks update-kubeconfig --name max-weather-cluster --region us-east-1
+aws eks update-kubeconfig --name max-weather-production-cluster --region us-east-1
 ```
 
 #### 3. Deploy Application
@@ -1115,20 +1121,21 @@ curl -H "Authorization: Bearer $TOKEN" \
 ## ✅ Assessment Deliverables
 
 | # | Deliverable | Status | Location |
-|---|-------------|--------|----------|
+|---|-------------|--------|----------|  
 | 1 | Architecture Diagram | ✅ | `architecture/architecture-diagram.md` |
-| 2 | Terraform Scripts (Modularized) | ✅ | `terraform/modules/` (6 modules) |
-| 3 | Kubernetes Deployment YAML | ✅ | `kubernetes/deployment.yaml` |
-| 4 | Kubernetes Service YAML | ✅ | `kubernetes/service.yaml` |
-| 5 | Nginx Ingress Controller | ✅ | `kubernetes/ingress-controller.yaml` |
-| 6 | Nginx Ingress | ✅ | `kubernetes/ingress.yaml` |
-| 7 | Jenkins Pipeline | ✅ | `jenkins/Jenkinsfile` |
+| 2 | Terraform Scripts (Modularized) | ✅ | `terraform/modules/` (7 modules) |
+| 3 | **Helm Chart for Deployment** | ✅ | `helm/max-weather/` (20 templates) |
+| 4 | Kubernetes Service YAML | ✅ | `helm/max-weather/templates/service.yaml` |
+| 5 | Nginx Ingress Controller | ✅ | `helm/max-weather/templates/ingress.yaml` |
+| 6 | Nginx Ingress | ✅ | `helm/max-weather/templates/ingress.yaml` |
+| 7 | **Jenkins Pipeline with Helm** | ✅ | `jenkins/Jenkinsfile` (Helm deployment) |
 | 8 | API Gateway Integration | ✅ | `docs/API_GATEWAY_MANUAL_SETUP.md` |
 | 9 | Postman Collection with Auth | ✅ | `postman/max-weather-api.postman_collection.json` |
 | 10 | **API Authorization (Lambda)** | ✅ | `lambda/authorizer/` |
 | 11 | **Public API Integration** | ✅ | `application/weather-api/app.py` |
-| 12 | CloudWatch Integration | ✅ | `kubernetes/fluent-bit/` |
-| 13 | Auto-Scaling Configuration | ✅ | `kubernetes/hpa.yaml` |
+| 12 | CloudWatch Integration | ✅ | `helm/max-weather/templates/` (Fluent Bit) |
+| 13 | Auto-Scaling Configuration | ✅ | `helm/max-weather/templates/hpa.yaml` |
+| 14 | **Environment-Specific Configs** | ✅ | `helm/max-weather/values-{staging,production}.yaml` |
 
 **All requirements met** ✓
 
@@ -1180,7 +1187,7 @@ aws logs tail /aws/lambda/max-weather-authorizer --follow
 aws logs tail /aws/apigateway/max-weather-api --follow
 
 # CloudWatch application logs
-aws logs tail /aws/eks/max-weather-cluster/application --follow
+aws logs tail /aws/eks/max-weather-production-cluster/application --follow
 ```
 
 ## 🎯 Assessment Criteria Met
@@ -1291,45 +1298,61 @@ terraform/
     └── iam/                  # IRSA roles for K8s service accounts
 ```
 
-### 3. Kubernetes Deployment Artifacts ✓
-- **Location**: `kubernetes/`
-- **Complete Set**:
-  - ✅ `deployment.yaml` - Weather API deployment with 3-10 replicas
-  - ✅ `service.yaml` - ClusterIP service
-  - ✅ `hpa.yaml` - Horizontal Pod Autoscaler (CPU 70%, Memory 80%)
-  - ✅ `ingress-controller.yaml` - Nginx Ingress Controller with NLB
-  - ✅ `ingress.yaml` - Ingress rules with rate limiting
-  - ✅ `fluent-bit/fluent-bit-daemonset.yaml` - CloudWatch log forwarding
+### 3. Kubernetes Deployment with Helm Chart ✓
+- **Location**: `helm/max-weather/`
+- **Helm Chart Structure**:
+  - ✅ Chart.yaml - Helm chart metadata (version 1.0.0)
+  - ✅ values.yaml - Default configuration values
+  - ✅ values-staging.yaml - Staging environment config (2-5 replicas)
+  - ✅ values-production.yaml - Production environment config (3-10 replicas)
+  - ✅ templates/ - 20 Kubernetes resource templates
+    - deployment.yaml - Weather API deployment with auto-scaling
+    - service.yaml - ClusterIP service
+    - hpa.yaml - Horizontal Pod Autoscaler (CPU 70%, Memory 80%)
+    - ingress.yaml - Ingress rules with rate limiting
+    - serviceaccount.yaml - IRSA service account
+    - configmap.yaml - Application configuration
+    - secret.yaml - Secrets management
+    - pdb.yaml - Pod Disruption Budget
+    - And more...
 
 **Key Features**:
 - Multi-AZ pod distribution
-- Zero-downtime rolling updates
+- Zero-downtime rolling updates with Helm
 - Comprehensive health checks (liveness, readiness, startup)
 - Pod Disruption Budget for HA
 - Resource requests and limits
 - Security contexts and non-root containers
+- Environment-specific configurations
+- Helm-based deployment workflow
 
-### 4. Jenkins CI/CD Pipeline ✓
+### 4. Jenkins CI/CD Pipeline with Helm ✓
 - **Location**: `jenkins/Jenkinsfile`
 - **Pipeline Stages**:
   1. Checkout from Git
-  2. Build Docker image
-  3. Run unit tests
-  4. Push to ECR
-  5. Deploy to Staging
-  6. Run smoke tests
-  7. **Manual Approval Gate** ⚠️
-  8. Deploy to Production
-  9. Health checks
-  10. Tag release
-  11. **Automated Rollback on Failure** 🔄
+  2. Helm Lint - Validate chart syntax and best practices
+  3. Build Docker image
+  4. Run unit tests
+  5. Push to ECR
+  6. **Helm Diff** - Preview changes before deployment (Staging)
+  7. Deploy to Staging - Helm upgrade with atomic rollback
+  8. Run smoke tests
+  9. **Manual Approval Gate** ⚠️
+  10. **Helm Diff** - Preview changes before deployment (Production)
+  11. Deploy to Production - Helm upgrade with atomic rollback
+  12. Health checks
+  13. Tag release
+  14. **Automated Rollback on Failure** 🔄
 
 **Features**:
-- Kubernetes-based Jenkins agents
+- Helm-based deployments with atomic upgrades
+- Helm diff for change visibility before deployment
+- Helm lint for chart validation
+- Kubernetes-based Jenkins agents with Helm 3.13.0
 - Docker-in-Docker support
 - AWS credential integration
 - Email notifications
-- Automated rollback mechanism
+- Automated rollback mechanism via Helm
 
 ### 5. API Gateway Integration ✓
 - **Lambda Authorizer**: Custom authorization logic with token validation
@@ -1438,9 +1461,9 @@ GET  /cities           - Available cities (requires auth token)
 
 ### 6. CloudWatch Logging ✓
 - **Log Groups**:
-  - `/aws/eks/max-weather-cluster/application`
-  - `/aws/eks/max-weather-cluster/dataplane`
-  - `/aws/eks/max-weather-cluster/host`
+  - `/aws/eks/max-weather-production-cluster/application`
+  - `/aws/eks/max-weather-production-cluster/dataplane`
+  - `/aws/eks/max-weather-production-cluster/host`
   - `/aws/apigateway/max-weather`
 
 - **Fluent Bit DaemonSet**: Forwards all container logs
@@ -1542,14 +1565,32 @@ script-clone/
 │       ├── cognito/
 │       ├── api-gateway/
 │       └── iam/
-├── kubernetes/
-│   ├── deployment.yaml                # App deployment + HPA
-│   ├── service.yaml                   # K8s service
-│   ├── hpa.yaml                       # Horizontal Pod Autoscaler
-│   ├── ingress-controller.yaml        # Nginx Ingress
-│   ├── ingress.yaml                   # Ingress rules
-│   └── fluent-bit/
-│       └── fluent-bit-daemonset.yaml  # CloudWatch logging
+├── helm/
+│   └── max-weather/                   # Helm chart (v1.0.0)
+│       ├── Chart.yaml                 # Chart metadata
+│       ├── values.yaml                # Default values
+│       ├── values-staging.yaml        # Staging config (2-5 replicas)
+│       ├── values-production.yaml     # Production config (3-10 replicas)
+│       ├── templates/                 # 20 K8s templates
+│       │   ├── deployment.yaml
+│       │   ├── service.yaml
+│       │   ├── hpa.yaml
+│       │   ├── ingress.yaml
+│       │   ├── configmap.yaml
+│       │   ├── secret.yaml
+│       │   ├── serviceaccount.yaml
+│       │   ├── pdb.yaml
+│       │   └── ...
+│       ├── scripts/
+│       │   └── install.sh             # Helm deployment helper
+│       └── docs/
+│           ├── DEPLOYMENT.md          # Deployment guide
+│           └── CONFIGURATION.md       # Configuration reference
+├── kubernetes/                        # Legacy K8s manifests
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── hpa.yaml
+│   └── ingress.yaml
 ├── application/
 │   └── weather-api/
 │       ├── app.py                     # Flask application
@@ -1572,6 +1613,7 @@ script-clone/
 - **Cloud Provider**: AWS
 - **Container Orchestration**: Kubernetes (Amazon EKS 1.31)
 - **IaC**: Terraform 1.5+
+- **Package Manager**: Helm 3.13.0
 - **Service Mesh**: Nginx Ingress
 - **Container Registry**: Amazon ECR
 
@@ -1653,7 +1695,7 @@ This is a demonstration project. For production use:
 kubectl logs -f deployment/weather-api
 
 # CloudWatch logs
-aws logs tail /aws/eks/max-weather-cluster/application --follow
+aws logs tail /aws/eks/max-weather-production-cluster/application --follow
 ```
 
 ### Scaling Manually
@@ -1775,6 +1817,7 @@ For questions or issues, please refer to the documentation or contact the Kwang 
 - **AWS CLI** (v2.x): [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 - **Terraform** (>= 1.5.0): [Download](https://www.terraform.io/downloads)
 - **kubectl** (>= 1.27): [Installation Guide](https://kubernetes.io/docs/tasks/tools/)
+- **Helm** (>= 3.13.0): [Installation Guide](https://helm.sh/docs/intro/install/)
 - **Docker** (>= 20.x): [Get Docker](https://docs.docker.com/get-docker/)
 - **Git**: [Download](https://git-scm.com/downloads)
 
@@ -1795,6 +1838,7 @@ For questions or issues, please refer to the documentation or contact the Kwang 
 aws --version
 terraform version
 kubectl version --client
+helm version
 docker --version
 
 # Configure AWS credentials
@@ -1920,45 +1964,50 @@ kubectl cluster-info
 kubectl get nodes
 ```
 
-### 2. Update Kubernetes Manifests
+### 2. Configure Helm Values
 ```bash
-cd ../kubernetes
+cd ../helm/max-weather
 
 # Get AWS Account ID
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Update deployment.yaml with ECR image URL
-ECR_URL="${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/max-weather/weather-api:latest"
+# Update values file with ECR image URL
+ECR_URL="${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/max-weather/weather-api"
 
-# Replace placeholder in deployment.yaml
-sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" deployment.yaml
-sed -i "s|<AWS_REGION>|us-east-1|g" deployment.yaml
+# Edit values-production.yaml
+nano values-production.yaml
+# Update:
+# image:
+#   repository: <ECR_URL>
+#   tag: "latest"
 ```
 
-### 3. Deploy Kubernetes Resources
+### 3. Deploy Application with Helm
 ```bash
-# Deploy in order:
+# Validate Helm chart
+helm lint .
 
-# 1. Nginx Ingress Controller
-kubectl apply -f ingress-controller.yaml
+# Preview what will be deployed (dry-run)
+helm install max-weather . \
+  --namespace default \
+  --values values-production.yaml \
+  --dry-run --debug
 
-# Wait for ingress controller to be ready
-kubectl wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=5m
-
-# 2. Fluent Bit (CloudWatch logging)
-kubectl apply -f fluent-bit/fluent-bit-daemonset.yaml
-
-# 3. Application resources
-kubectl apply -f deployment.yaml
-kubectl apply -f service.yaml
-kubectl apply -f hpa.yaml
-kubectl apply -f ingress.yaml
+# Deploy to Kubernetes with Helm
+helm install max-weather . \
+  --namespace default \
+  --values values-production.yaml \
+  --create-namespace \
+  --atomic \
+  --timeout 5m
 
 # Verify deployment
 kubectl get all
+helm list
+helm status max-weather
+
+# Watch rollout status
+kubectl rollout status deployment/max-weather
 ```
 
 ### 4. Build and Push Docker Image
@@ -1978,11 +2027,16 @@ aws ecr get-login-password --region us-east-1 | \
 # Push image
 docker push ${ECR_URL}
 
-# Update deployment
-kubectl set image deployment/weather-api weather-api=${ECR_URL}
+# Update deployment with Helm
+helm upgrade max-weather ./max-weather \
+  --namespace default \
+  --values ./max-weather/values-production.yaml \
+  --set image.tag=latest \
+  --atomic \
+  --timeout 5m
 
 # Wait for rollout
-kubectl rollout status deployment/weather-api
+kubectl rollout status deployment/max-weather
 ```
 
 ## Post-Deployment Configuration
@@ -2057,6 +2111,289 @@ aws route53 change-resource-record-sets \
   }'
 ```
 
+## Helm Chart Deployment
+
+### Helm Chart Structure
+
+The Max Weather Helm chart (`helm/max-weather/`) provides a production-ready deployment package:
+
+```
+helm/max-weather/
+├── Chart.yaml                 # Chart metadata (version 1.0.0)
+├── values.yaml                # Default configuration
+├── values-staging.yaml        # Staging environment (2-5 replicas)
+├── values-production.yaml     # Production environment (3-10 replicas)
+├── templates/                 # 20 Kubernetes templates
+│   ├── deployment.yaml        # Main application deployment
+│   ├── service.yaml           # ClusterIP service
+│   ├── hpa.yaml               # Horizontal Pod Autoscaler
+│   ├── ingress.yaml           # Nginx Ingress
+│   ├── configmap.yaml         # Application configuration
+│   ├── secret.yaml            # Secrets management
+│   ├── serviceaccount.yaml    # IRSA service account
+│   ├── pdb.yaml               # Pod Disruption Budget
+│   └── ...                    # Plus 12 more templates
+├── scripts/
+│   └── install.sh             # Helper deployment script
+└── docs/
+    ├── DEPLOYMENT.md          # Deployment guide
+    └── CONFIGURATION.md       # Configuration reference
+```
+
+### Deploying with Helm
+
+#### 1. Install to Production
+```bash
+cd helm/max-weather
+
+# Lint the chart
+helm lint .
+
+# Deploy to production
+helm install max-weather . \
+  --namespace default \
+  --values values-production.yaml \
+  --create-namespace \
+  --atomic \
+  --timeout 5m
+
+# Verify installation
+helm status max-weather
+helm get values max-weather
+```
+
+#### 2. Install to Staging
+```bash
+helm install max-weather-staging . \
+  --namespace staging \
+  --values values-staging.yaml \
+  --create-namespace \
+  --atomic
+```
+
+#### 3. Upgrade Existing Release
+```bash
+# Preview changes with diff
+helm diff upgrade max-weather . \
+  --values values-production.yaml
+
+# Upgrade release
+helm upgrade max-weather . \
+  --values values-production.yaml \
+  --atomic \
+  --timeout 5m
+
+# Upgrade with specific image tag
+helm upgrade max-weather . \
+  --values values-production.yaml \
+  --set image.tag=v1.2.3 \
+  --atomic
+```
+
+#### 4. Uninstall Release
+```bash
+# Uninstall (keeps history)
+helm uninstall max-weather
+
+# Uninstall completely (remove history)
+helm uninstall max-weather --no-hooks
+```
+
+### Helm Chart Configuration
+
+#### Environment-Specific Values
+
+**Staging** (`values-staging.yaml`):
+```yaml
+replicaCount: 2
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+ingress:
+  enabled: true
+  host: "staging.kwangle.weather"
+```
+
+**Production** (`values-production.yaml`):
+```yaml
+replicaCount: 3  # HA with 3 replicas
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+ingress:
+  enabled: true
+  host: "api.kwangle.weather"
+```
+
+#### Common Customizations
+
+```bash
+# Override image
+helm upgrade max-weather . \
+  --set image.repository=my-registry/weather-api \
+  --set image.tag=v2.0.0
+
+# Override replicas
+helm upgrade max-weather . \
+  --set replicaCount=5
+
+# Override ingress host
+helm upgrade max-weather . \
+  --set ingress.host=custom.domain.com
+
+# Override resources
+helm upgrade max-weather . \
+  --set resources.requests.memory=1Gi \
+  --set resources.limits.memory=2Gi
+
+# Multiple overrides from file
+helm upgrade max-weather . \
+  --values custom-values.yaml
+```
+
+### Helm Operations
+
+#### View Release Information
+```bash
+# List all releases
+helm list
+
+# List releases in all namespaces
+helm list --all-namespaces
+
+# Get release status
+helm status max-weather
+
+# Get release values
+helm get values max-weather
+
+# Get all release information
+helm get all max-weather
+```
+
+#### Release History & Rollback
+```bash
+# View release history
+helm history max-weather
+
+# Rollback to previous version
+helm rollback max-weather
+
+# Rollback to specific revision
+helm rollback max-weather 3
+
+# Rollback with cleanup
+helm rollback max-weather --cleanup-on-fail
+```
+
+#### Testing & Debugging
+```bash
+# Dry run (template only)
+helm install max-weather . --dry-run
+
+# Dry run with debug output
+helm install max-weather . --dry-run --debug
+
+# Template and output to file
+helm template max-weather . \
+  --values values-production.yaml \
+  > rendered-manifests.yaml
+
+# Get hooks
+helm get hooks max-weather
+
+# Get notes
+helm get notes max-weather
+```
+
+### Helm in CI/CD Pipeline
+
+The Jenkins pipeline uses Helm for safe deployments:
+
+```groovy
+// Jenkinsfile excerpt
+stage('Helm Lint') {
+  steps {
+    sh 'helm lint helm/max-weather/'
+  }
+}
+
+stage('Helm Diff - Staging') {
+  steps {
+    sh '''
+      helm diff upgrade max-weather-staging helm/max-weather/ \
+        --values helm/max-weather/values-staging.yaml \
+        --allow-unreleased
+    '''
+  }
+}
+
+stage('Deploy to Staging') {
+  steps {
+    sh '''
+      helm upgrade --install max-weather-staging helm/max-weather/ \
+        --namespace staging \
+        --values helm/max-weather/values-staging.yaml \
+        --atomic \
+        --timeout 5m \
+        --wait
+    '''
+  }
+}
+
+stage('Manual Approval') {
+  steps {
+    input message: 'Deploy to production?'
+  }
+}
+
+stage('Deploy to Production') {
+  steps {
+    sh '''
+      helm upgrade --install max-weather helm/max-weather/ \
+        --namespace default \
+        --values helm/max-weather/values-production.yaml \
+        --atomic \
+        --timeout 5m \
+        --wait
+    '''
+  }
+}
+```
+
+### Benefits of Helm Deployment
+
+1. **Atomic Deployments**: `--atomic` flag ensures all-or-nothing deployment
+2. **Automatic Rollback**: Failed deployments automatically rollback
+3. **Version Control**: Track all releases with revision history
+4. **Configuration Management**: Environment-specific value files
+5. **Template Reusability**: Single chart for all environments
+6. **Easy Rollbacks**: One command to rollback to any version
+7. **Change Visibility**: Helm diff shows exactly what will change
+8. **Consistent Deployments**: Same process across all environments
+
 ## Testing
 
 ### 1. Test Application Directly
@@ -2116,7 +2453,7 @@ open "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards
 kubectl logs -f deployment/weather-api
 
 # Via CloudWatch
-aws logs tail /aws/eks/max-weather-cluster/application --follow
+aws logs tail /aws/eks/max-weather-production-cluster/application --follow
 
 # View specific pod
 POD=$(kubectl get pod -l app=weather-api -o jsonpath='{.items[0].metadata.name}')
@@ -2207,16 +2544,35 @@ curl -X POST \
 
 ### Rollback Procedures
 
-#### Rollback Kubernetes Deployment
+#### Rollback Helm Release
 ```bash
-# View rollout history
-kubectl rollout history deployment/weather-api
+# View Helm release history
+helm history max-weather
 
-# Rollback to previous version
-kubectl rollout undo deployment/weather-api
+# Rollback to previous release
+helm rollback max-weather
 
 # Rollback to specific revision
-kubectl rollout undo deployment/weather-api --to-revision=2
+helm rollback max-weather 2
+
+# Rollback with timeout
+helm rollback max-weather --timeout 5m --wait
+
+# Verify rollback status
+helm status max-weather
+kubectl rollout status deployment/max-weather
+```
+
+#### Rollback Kubernetes Deployment (Manual)
+```bash
+# View rollout history
+kubectl rollout history deployment/max-weather
+
+# Rollback to previous version
+kubectl rollout undo deployment/max-weather
+
+# Rollback to specific revision
+kubectl rollout undo deployment/max-weather --to-revision=2
 ```
 
 #### Rollback Terraform Changes
@@ -2234,7 +2590,7 @@ terraform state pull > backup.tfstate
 ```
 
 ### Getting Help
-- Check CloudWatch Logs: `/aws/eks/max-weather-cluster/`
+- Check CloudWatch Logs: `/aws/eks/max-weather-production-cluster/`
 - Review Kubernetes events: `kubectl get events`
 - Check AWS Console for resource status
 - Review Terraform state: `terraform state list`

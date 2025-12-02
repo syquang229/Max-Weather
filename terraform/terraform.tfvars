@@ -28,7 +28,7 @@ eks_node_groups = {
     min_size       = 2
     max_size       = 6
     instance_types = ["t3.medium"]
-    capacity_type  = "ON_DEMAND"  # Use "SPOT" for cost savings in non-production
+    capacity_type  = "ON_DEMAND" # Use "SPOT" for cost savings in non-production
     disk_size      = 50
     labels = {
       role = "general"
@@ -52,14 +52,15 @@ alarm_email_endpoints = [
 # Cognito Configuration
 cognito_callback_urls = [
   "https://api.kwangle.weather/callback",
-  "http://localhost:3000/callback"  # For local development
+  "https://staging.kwangle.weather/callback",
+  "http://localhost:3000/callback" # For local development
 ]
 
 cognito_logout_urls = [
   "https://api.kwangle.weather/logout",
+  "https://staging.kwangle.weather/logout",
   "http://localhost:3000/logout"
 ]
 
 # API Gateway Configuration
-api_domain_name = "api.kwangle.weather"
 api_stage_name  = "v1"

@@ -8,7 +8,7 @@ global:
     region: us-east-1
     accountId: ""
   cluster:
-    name: max-weather-cluster
+    name: max-weather-production-cluster
   environment: production
 
 # Weather API application settings
@@ -282,9 +282,9 @@ fluentBit:
     
     output:
       region: us-east-1
-      logGroupName: /aws/eks/max-weather-cluster/application
-      dataplaneLogGroup: /aws/eks/max-weather-cluster/dataplane
-      hostLogGroup: /aws/eks/max-weather-cluster/host
+      logGroupName: /aws/eks/max-weather-production-cluster/application
+      dataplaneLogGroup: /aws/eks/max-weather-production-cluster/dataplane
+      hostLogGroup: /aws/eks/max-weather-production-cluster/host
       autoCreateGroup: true
       retryLimit: 2
 

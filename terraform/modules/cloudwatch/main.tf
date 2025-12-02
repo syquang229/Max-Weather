@@ -1,5 +1,16 @@
 # CloudWatch Module - Logging and Monitoring
 
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 # Log Groups
 resource "aws_cloudwatch_log_group" "application" {
   name              = "/aws/eks/${var.cluster_name}/application"
@@ -145,9 +156,9 @@ resource "aws_cloudwatch_dashboard" "main" {
       {
         type = "log"
         properties = {
-          query   = "SOURCE '${aws_cloudwatch_log_group.application.name}' | fields @timestamp, @message | sort @timestamp desc | limit 100"
-          region  = data.aws_region.current.name
-          title   = "Recent Application Logs"
+          query  = "SOURCE '${aws_cloudwatch_log_group.application.name}' | fields @timestamp, @message | sort @timestamp desc | limit 100"
+          region = data.aws_region.current.name
+          title  = "Recent Application Logs"
         }
       }
     ]

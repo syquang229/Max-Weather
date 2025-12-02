@@ -1,13 +1,3 @@
-variable "project_name" {
-  description = "Project name"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-}
-
 variable "cluster_name" {
   description = "EKS cluster name"
   type        = string
@@ -51,30 +41,12 @@ variable "node_groups" {
     capacity_type  = string
     disk_size      = number
     labels         = map(string)
-    taints         = list(object({
+    taints = list(object({
       key    = string
       value  = string
       effect = string
     }))
   }))
-}
-
-variable "enable_cluster_autoscaler" {
-  description = "Enable cluster autoscaler"
-  type        = bool
-  default     = true
-}
-
-variable "enable_aws_load_balancer_controller" {
-  description = "Enable AWS Load Balancer Controller"
-  type        = bool
-  default     = true
-}
-
-variable "enable_metrics_server" {
-  description = "Enable metrics server"
-  type        = bool
-  default     = true
 }
 
 variable "tags" {

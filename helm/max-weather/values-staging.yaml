@@ -5,7 +5,7 @@ global:
     region: us-east-1
     accountId: ""  # Will be set via --set in Jenkins
   cluster:
-    name: max-weather-cluster
+    name: max-weather-production-cluster
   environment: staging
 
 weatherApi:
@@ -33,6 +33,8 @@ weatherApi:
       value: "8000"
     - name: AWS_REGION
       value: "us-east-1"
+    - name: CLOUDWATCH_LOG_GROUP
+      value: "/aws/eks/max-weather-cluster/application/staging"
   
   resources:
     limits:

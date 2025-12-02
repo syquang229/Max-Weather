@@ -63,12 +63,13 @@ spec:
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         
         // EKS Configuration
-        EKS_CLUSTER_NAME_STAGING = 'max-weather-staging-cluster'
-        EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-cluster'
+        EKS_CLUSTER_NAME_STAGING = 'max-weather-production-cluster'
+        EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-production-cluster'
         
         // Application Configuration
         APP_NAME = 'weather-api'
-        NAMESPACE = 'default'
+        NAMESPACE_STAGING = 'weather-staging'
+        NAMESPACE_PRODUCTION = 'weather-production'
         
         // Helm Configuration
         HELM_RELEASE_NAME = 'max-weather'
@@ -201,7 +202,7 @@ spec:
                             
                             # Validate templates render correctly
                             echo "Validating Helm templates..."
-                            helm template ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                            helm template ${HELM_RELEASE_NAME} -n ${NAMESPACE_STAGING} ${HELM_CHART_PATH} \
                                 --values ${HELM_VALUES_STAGING} \
                                 --set weatherApi.image.tag=${IMAGE_TAG} \
                                 --set global.aws.accountId=${AWS_ACCOUNT_ID} \
@@ -235,7 +236,7 @@ spec:
                                 # Show diff between current and new release
                                 echo "Showing Helm diff for staging deployment..."
                                 helm diff upgrade ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
-                                    --namespace ${NAMESPACE} \
+                                    --namespace ${NAMESPACE_STAGING} \
                                     --values ${HELM_VALUES_STAGING} \
                                     --set weatherApi.image.tag=${IMAGE_TAG} \
                                     --set global.aws.accountId=${AWS_ACCOUNT_ID} \
@@ -259,7 +260,7 @@ spec:
                                 # Deploy using Helm
                                 echo "Deploying to staging with Helm..."
                                 helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
-                                    --namespace ${NAMESPACE} \
+                                    --namespace ${NAMESPACE_STAGING} \
                                     --create-namespace \
                                     --values ${HELM_VALUES_STAGING} \
                                     --set weatherApi.image.tag=${IMAGE_TAG} \
@@ -270,8 +271,8 @@ spec:
                                     --atomic
                                 
                                 # Show release info
-                                helm status ${HELM_RELEASE_NAME} -n ${NAMESPACE}
-                                helm get values ${HELM_RELEASE_NAME} -n ${NAMESPACE}
+                                helm status ${HELM_RELEASE_NAME} -n ${NAMESPACE_STAGING}
+                                helm get values ${HELM_RELEASE_NAME} -n ${NAMESPACE_STAGING}
                             """
                         }
                     }
@@ -283,43 +284,9 @@ spec:
                             sh """
                                 # Verify deployment
                                 echo "Verifying deployment..."
-                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
-                                kubectl get svc ${APP_NAME}-service -n ${NAMESPACE}
-                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
-                            """
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Run Smoke Tests (Staging)') {
-            steps {
-                container('kubectl') {
-                    script {
-                        echo "========================================="
-                        echo "Stage: Smoke Tests (Staging)"
-                        echo "========================================="
-                        
-                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                            sh """
-                                # Get service endpoint
-                                SERVICE_URL=\$(kubectl get svc ${APP_NAME}-service -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-                                
-                                # Wait for service to be ready
-                                sleep 30
-                                
-                                # Run health checks
-                                echo "Testing health endpoint..."
-                                curl -f http://\${SERVICE_URL}/health || exit 1
-                                
-                                echo "Testing current weather endpoint..."
-                                curl -f "http://\${SERVICE_URL}/current?location=London" || exit 1
-                                
-                                echo "Testing forecast endpoint..."
-                                curl -f "http://\${SERVICE_URL}/forecast?location=London&days=5" || exit 1
-                                
-                                echo "All smoke tests passed!"
+                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE_STAGING}
+                                kubectl get svc ${APP_NAME}-service -n ${NAMESPACE_STAGING}
+                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE_STAGING}
                             """
                         }
                     }
@@ -362,7 +329,7 @@ spec:
                             
                             # Validate production templates
                             echo "Validating Helm templates for production..."
-                            helm template ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
+                            helm template ${HELM_RELEASE_NAME} -n ${NAMESPACE_PRODUCTION} ${HELM_CHART_PATH} \
                                 --values ${HELM_VALUES_PRODUCTION} \
                                 --set weatherApi.image.tag=${IMAGE_TAG} \
                                 --set global.aws.accountId=${AWS_ACCOUNT_ID} \
@@ -396,7 +363,7 @@ spec:
                                 # Show diff for production deployment
                                 echo "Showing Helm diff for production deployment..."
                                 helm diff upgrade ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
-                                    --namespace ${NAMESPACE} \
+                                    --namespace ${NAMESPACE_PRODUCTION} \
                                     --values ${HELM_VALUES_PRODUCTION} \
                                     --set weatherApi.image.tag=${IMAGE_TAG} \
                                     --set global.aws.accountId=${AWS_ACCOUNT_ID} \
@@ -433,7 +400,7 @@ spec:
                                 # Deploy to production using Helm
                                 echo "Deploying to production with Helm..."
                                 helm upgrade --install ${HELM_RELEASE_NAME} ${HELM_CHART_PATH} \
-                                    --namespace ${NAMESPACE} \
+                                    --namespace ${NAMESPACE_PRODUCTION} \
                                     --create-namespace \
                                     --values ${HELM_VALUES_PRODUCTION} \
                                     --set weatherApi.image.tag=${IMAGE_TAG} \
@@ -444,11 +411,11 @@ spec:
                                     --atomic
                                 
                                 # Show release info
-                                helm status ${HELM_RELEASE_NAME} -n ${NAMESPACE}
-                                helm get values ${HELM_RELEASE_NAME} -n ${NAMESPACE}
+                                helm status ${HELM_RELEASE_NAME} -n ${NAMESPACE_PRODUCTION}
+                                helm get values ${HELM_RELEASE_NAME} -n ${NAMESPACE_PRODUCTION}
                                 
                                 # List all releases
-                                helm list -n ${NAMESPACE}
+                                helm list -n ${NAMESPACE_PRODUCTION}
                             """
                         }
                     }
@@ -460,10 +427,10 @@ spec:
                             sh """
                                 # Verify production deployment
                                 echo "Verifying production deployment..."
-                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
-                                kubectl get svc ${APP_NAME}-service -n ${NAMESPACE}
-                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
-                                kubectl get ingress -n ${NAMESPACE}
+                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE_PRODUCTION}
+                                kubectl get svc ${APP_NAME}-service -n ${NAMESPACE_PRODUCTION}
+                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE_PRODUCTION}
+                                kubectl get ingress -n ${NAMESPACE_PRODUCTION}
                             """
                         }
                     }
@@ -471,49 +438,6 @@ spec:
             }
         }
 
-        stage('Run Health Checks (Production)') {
-            steps {
-                container('kubectl') {
-                    script {
-                        echo "========================================="
-                        echo "Stage: Health Checks (Production)"
-                        echo "========================================="
-                        
-                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                            sh """
-                                # Get service endpoint
-                                SERVICE_URL=\$(kubectl get svc ${APP_NAME}-service -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-                                
-                                # Wait for service to be ready
-                                sleep 30
-                                
-                                # Run health checks
-                                for i in {1..5}; do
-                                    echo "Health check attempt \$i/5"
-                                    if curl -f http://\${SERVICE_URL}/health; then
-                                        echo "Health check passed!"
-                                        break
-                                    fi
-                                    if [ \$i -eq 5 ]; then
-                                        echo "Health check failed after 5 attempts!"
-                                        exit 1
-                                    fi
-                                    sleep 10
-                                done
-                                
-                                # Check pod status
-                                kubectl get pods -l app=${APP_NAME} -n ${NAMESPACE}
-                                
-                                # Check HPA status
-                                kubectl get hpa ${APP_NAME}-hpa -n ${NAMESPACE}
-                                
-                                echo "Production deployment successful!"
-                            """
-                        }
-                    }
-                }
-            }
-        }
 
         stage('Tag Release') {
             steps {

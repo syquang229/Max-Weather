@@ -14,7 +14,7 @@ variable "project_name" {
 variable "environment" {
   description = "Environment name (e.g., staging, production)"
   type        = string
-  
+
   validation {
     condition     = contains(["staging", "production", "dev"], var.environment)
     error_message = "Environment must be staging, production, or dev."
@@ -81,13 +81,13 @@ variable "eks_node_groups" {
     capacity_type  = string
     disk_size      = number
     labels         = map(string)
-    taints         = list(object({
+    taints = list(object({
       key    = string
       value  = string
       effect = string
     }))
   }))
-  
+
   default = {
     general = {
       desired_size   = 3
@@ -138,12 +138,6 @@ variable "cognito_logout_urls" {
 }
 
 # API Gateway Variables
-variable "api_domain_name" {
-  description = "Custom domain name for API Gateway"
-  type        = string
-  default     = "api.kwangle.weather"
-}
-
 variable "api_stage_name" {
   description = "API Gateway stage name"
   type        = string

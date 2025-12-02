@@ -257,25 +257,42 @@ Expected response:
 
 Update Kubernetes deployment to include OpenWeatherMap API key:
 
+### Option 1: Using Helm Values (Recommended)
+
+Edit `helm/max-weather/values-production.yaml`:
+
+```yaml
+env:
+  - name: OPENWEATHER_API_KEY
+    value: "your-api-key-here"
+  - name: USE_MOCK_DATA
+    value: "false"
+```
+
+Then upgrade the Helm release:
+
+```bash
+helm upgrade max-weather ./helm/max-weather \
+  --namespace default \
+  --values ./helm/max-weather/values-production.yaml
+```
+
+### Option 2: Using Kubernetes Secrets
+
 ```bash
 kubectl create secret generic weather-api-secrets \
   --from-literal=OPENWEATHER_API_KEY=your-api-key-here
 
-kubectl set env deployment/weather-api \
-  --from=secret/weather-api-secrets
+# Update Helm values to reference the secret
+helm upgrade max-weather ./helm/max-weather \
+  --set secretName=weather-api-secrets
 ```
 
-Or edit `kubernetes/deployment.yaml`:
+### Option 3: Direct kubectl (Legacy)
 
-```yaml
-env:
-- name: OPENWEATHER_API_KEY
-  valueFrom:
-    secretKeyRef:
-      name: weather-api-secrets
-      key: OPENWEATHER_API_KEY
-- name: USE_MOCK_DATA
-  value: "false"
+```bash
+kubectl set env deployment/max-weather \
+  OPENWEATHER_API_KEY=your-api-key-here
 ```
 
 ## Testing Different Endpoints
@@ -328,7 +345,10 @@ aws logs tail /aws/apigateway/max-weather-api --follow
 # Lambda authorizer logs
 aws logs tail /aws/lambda/max-weather-authorizer --follow
 
-# Application logs
+# Application logs (Helm deployment)
+kubectl logs -f deployment/max-weather
+
+# Or for legacy deployment
 kubectl logs -f deployment/weather-api
 ```
 

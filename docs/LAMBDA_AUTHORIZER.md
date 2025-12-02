@@ -95,6 +95,16 @@ aws lambda create-function \
 3. Under "Authorization", select your authorizer
 4. Deploy the API
 
+## Integration with Kubernetes/Helm
+
+When deploying the application with Helm, the Lambda authorizer integrates seamlessly:
+
+```bash
+# The Helm chart includes service account annotations for IRSA
+helm install max-weather ./helm/max-weather \
+  --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=ROLE_ARN
+```
+
 ## Token Format
 
 The authorizer expects tokens in the `Authorization` header:
@@ -107,9 +117,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ```json
 {
-  "sub": "user-id-123",
-  "username": "john.doe",
-  "email": "john@example.com",
+  "sub": "userid-229",
+  "username": "kwang.le",
+  "email": "syquang229@gmail.com",
   "iss": "max-weather-api",
   "iat": 1638360000,
   "exp": 1638363600
@@ -150,28 +160,28 @@ In AWS Lambda console:
 {
   "type": "TOKEN",
   "authorizationToken": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "methodArn": "arn:aws:execute-api:us-east-1:123456789012:abcdef123/prod/GET/current"
+  "methodArn": "arn:aws:execute-api:us-east-1:xxxxxxxx:abcdef123/prod/GET/current"
 }
 ```
 
 Expected response (Allow):
 ```json
 {
-  "principalId": "user-id-123",
+  "principalId": "userid-229",
   "policyDocument": {
     "Version": "2012-10-17",
     "Statement": [
       {
         "Action": "execute-api:Invoke",
         "Effect": "Allow",
-        "Resource": "arn:aws:execute-api:us-east-1:123456789012:abcdef123/prod/GET/current"
+        "Resource": "arn:aws:execute-api:us-east-1:xxxxxxxxx:abcdef123/prod/GET/current"
       }
     ]
   },
   "context": {
-    "userId": "user-id-123",
-    "username": "john.doe",
-    "email": "john@example.com"
+    "userId": "userid-229",
+    "username": "kwang.le",
+    "email": "syquang229@gmail.com"
   }
 }
 ```
@@ -203,9 +213,9 @@ If using Cognito, no additional permissions needed (public JWKS endpoint).
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `COGNITO_USER_POOL_ID` | Optional* | Cognito User Pool ID | `us-east-1_abc123` |
+| `COGNITO_USER_POOL_ID` | Optional* | Cognito User Pool ID | `us-east-1_xxxxxxxx` |
 | `COGNITO_REGION` | Optional* | AWS Region | `us-east-1` |
-| `COGNITO_APP_CLIENT_ID` | Optional* | Cognito App Client ID | `abc123def456` |
+| `COGNITO_APP_CLIENT_ID` | Optional* | Cognito App Client ID | `xxxxxxxxxxxxxxxxxxxxxxxxxx` |
 | `JWT_SECRET` | Optional** | Shared secret for JWT | `my-secret-key` |
 | `TOKEN_ISSUER` | Optional** | JWT issuer | `max-weather-api` |
 

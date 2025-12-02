@@ -16,13 +16,7 @@ variable "cluster_name" {
 variable "log_retention_days" {
   description = "Number of days to retain logs"
   type        = number
-  default     = 30
-}
-
-variable "enable_container_insights" {
-  description = "Enable Container Insights"
-  type        = bool
-  default     = true
+  default     = 7
 }
 
 variable "alarm_email_endpoints" {

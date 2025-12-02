@@ -1,5 +1,16 @@
 # Cognito Module - OAuth2 Authentication
 
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 resource "aws_cognito_user_pool" "main" {
   name = var.user_pool_name
 
@@ -57,7 +68,7 @@ resource "aws_cognito_user_pool_client" "api_client" {
   allowed_oauth_flows                  = ["code", "implicit", "client_credentials"]
   allowed_oauth_scopes                 = ["email", "openid", "profile", "aws.cognito.signin.user.admin"]
   allowed_oauth_flows_user_pool_client = true
-  
+
   callback_urls = var.callback_urls
   logout_urls   = var.logout_urls
 

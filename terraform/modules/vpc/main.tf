@@ -1,5 +1,16 @@
 # VPC Module - Creates VPC with public and private subnets across multiple AZs
 
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = var.enable_dns_hostnames
@@ -8,7 +19,7 @@ resource "aws_vpc" "main" {
   tags = merge(
     var.tags,
     {
-      Name = "${var.project_name}-${var.environment}-vpc"
+      Name                                                                   = "${var.project_name}-${var.environment}-vpc"
       "kubernetes.io/cluster/${var.project_name}-${var.environment}-cluster" = "shared"
     }
   )
@@ -38,9 +49,9 @@ resource "aws_subnet" "public" {
   tags = merge(
     var.tags,
     {
-      Name = "${var.project_name}-${var.environment}-public-${var.availability_zones[count.index]}"
+      Name                                                                   = "${var.project_name}-${var.environment}-public-${var.availability_zones[count.index]}"
       "kubernetes.io/cluster/${var.project_name}-${var.environment}-cluster" = "shared"
-      "kubernetes.io/role/elb"                                                = "1"
+      "kubernetes.io/role/elb"                                               = "1"
     }
   )
 }
@@ -56,9 +67,9 @@ resource "aws_subnet" "private" {
   tags = merge(
     var.tags,
     {
-      Name = "${var.project_name}-${var.environment}-private-${var.availability_zones[count.index]}"
+      Name                                                                   = "${var.project_name}-${var.environment}-private-${var.availability_zones[count.index]}"
       "kubernetes.io/cluster/${var.project_name}-${var.environment}-cluster" = "shared"
-      "kubernetes.io/role/internal-elb"                                       = "1"
+      "kubernetes.io/role/internal-elb"                                      = "1"
     }
   )
 }

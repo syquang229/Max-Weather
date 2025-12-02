@@ -5,12 +5,12 @@ global:
     region: us-east-1
     accountId: ""
   cluster:
-    name: max-weather-cluster
+    name: max-weather-production-cluster
   environment: production
 
 weatherApi:
   enabled: true
-  replicaCount: 2
+  replicaCount: 3
   
   image:
     repository: max-weather/weather-api
@@ -31,7 +31,7 @@ weatherApi:
     - name: PORT
       value: "8000"
     - name: CLOUDWATCH_LOG_GROUP
-      value: "/aws/eks/max-weather-cluster/application"
+      value: "/aws/eks/max-weather-cluster/application/production"
     - name: AWS_REGION
       value: "us-east-1"
   
@@ -46,7 +46,7 @@ weatherApi:
 # Autoscaling - production settings
 autoscaling:
   enabled: true
-  minReplicas: 2
+  minReplicas: 3
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80

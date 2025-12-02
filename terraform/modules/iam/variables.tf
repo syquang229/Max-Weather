@@ -8,11 +8,6 @@ variable "environment" {
   type        = string
 }
 
-variable "cluster_name" {
-  description = "EKS cluster name"
-  type        = string
-}
-
 variable "oidc_provider_arn" {
   description = "ARN of the OIDC provider for EKS"
   type        = string

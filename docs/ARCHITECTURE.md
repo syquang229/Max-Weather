@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document describes the complete infrastructure architecture for the Max Weather platform, a highly available, production-ready weather forecasting system built on AWS using Kubernetes (Amazon EKS).
+This document describes the complete infrastructure architecture for the Max Weather platform, a highly available, production-ready weather forecasting system built on AWS using Kubernetes (Amazon EKS) and deployed with Helm charts for production-grade package management.
 
 ## Architecture Diagram
 
@@ -66,7 +66,7 @@ This document describes the complete infrastructure architecture for the Max Wea
 │  │  │  │              │  │              │  │              │           │ │ │
 │  │  │  │ ┌──────────────────────────────────────────────┐ │           │ │ │
 │  │  │  │ │        Amazon EKS Cluster                    │ │           │ │ │
-│  │  │  │ │        (max-weather-cluster)                 │ │           │ │ │
+│  │  │  │ │        (max-weather-production-cluster)                 │ │           │ │ │
 │  │  │  │ │                                              │ │           │ │ │
 │  │  │  │ │  ┌────────────────────────────────────────┐ │ │           │ │ │
 │  │  │  │ │  │   Control Plane (Managed by AWS)       │ │ │           │ │ │
@@ -427,7 +427,6 @@ The CI/CD pipeline uses Helm for declarative, version-controlled deployments wit
          ║ 1. Helm Lint            ║
          ║ 2. Helm Diff            ║
          ║ 3. Helm Deploy          ║
-         ║ 4. Smoke Tests          ║
          ╚══════════════════════════╝
                     │
                     ▼
@@ -444,7 +443,6 @@ The CI/CD pipeline uses Helm for declarative, version-controlled deployments wit
          ║ 2. Helm Diff            ║
          ║ 3. Manual Approval      ║ ← Review Diff
          ║ 4. Helm Deploy          ║
-         ║ 5. Health Checks        ║
          ╚══════════════════════════╝
                     │
                     ▼
@@ -533,30 +531,23 @@ kubectl get pods -l app=weather-api -n weather-staging
 kubectl get hpa weather-api-hpa -n weather-staging
 ```
 
-**6. Run Smoke Tests (Staging)**
-- Test `/health` endpoint
-- Validate `/current` weather endpoint
-- Verify `/forecast` endpoint
-- Check authentication flow
-- Ensure proper error handling
-
-**7. Approval for Production**
+**6. Approval for Production**
 - Manual approval gate
 - Review staging test results
 - Check monitoring dashboards
 - Authorized approvers only (admin, devops-lead)
 - 24-hour approval window
 
-**8. Deploy to Production (Helm-based with Approval)**
+**7. Deploy to Production (Helm-based with Approval)**
 
-**8a. Helm Lint (Production)**
+**7a. Helm Lint (Production)**
 ```bash
 helm lint ./helm/max-weather
 ```
 - Re-validates chart before production
 - Ensures no changes since staging
 
-**8b. Helm Diff (Production)**
+**7b. Helm Diff (Production)**
 ```bash
 helm diff upgrade max-weather ./helm/max-weather \
   --namespace default \
@@ -568,7 +559,7 @@ helm diff upgrade max-weather ./helm/max-weather \
 - Displays differences from current production state
 - Critical review point before deployment
 
-**8c. Manual Approval (Review Diff)**
+**7c. Manual Approval (Review Diff)**
 - **CRITICAL STEP**: Review Helm diff output
 - Verify resource changes are expected
 - Check replica counts and resource limits
@@ -576,7 +567,7 @@ helm diff upgrade max-weather ./helm/max-weather \
 - Approve/Reject deployment
 - Authorized approvers only
 
-**8d. Helm Deploy (Production)**
+**7d. Helm Deploy (Production)**
 ```bash
 helm upgrade --install max-weather ./helm/max-weather \
   --namespace default \
@@ -592,7 +583,7 @@ helm upgrade --install max-weather ./helm/max-weather \
 - Progressive rollout strategy
 - Monitors pod health during rollout
 
-**8e. Verify Production**
+**7e. Verify Production**
 ```bash
 helm status max-weather -n weather-production
 helm list -n weather-production
@@ -600,22 +591,14 @@ kubectl get pods -l app=weather-api -n weather-production
 kubectl get hpa,pdb,ingress -n weather-production
 ```
 
-**9. Run Health Checks (Production)**
-- Multiple health check attempts (5 retries)
-- Verify all pods are ready
-- Check HPA status and metrics
-- Validate ingress configuration
-- Test API endpoints
-- Monitor CloudWatch metrics
-
-**10. Post-Deployment**
+**8. Post-Deployment**
 - Tag Git commit: `v${BUILD_NUMBER}`
 - Push Git tags to repository
 - Generate release notes
 - Update Helm release history
 - Send success notifications (Email/Slack)
 
-**11. Rollback (if failure)**
+**9. Rollback (if failure)**
 
 Automatic rollback on deployment failure:
 
@@ -701,7 +684,7 @@ AWS_REGION = 'us-east-1'
 ECR_REPOSITORY = 'max-weather/weather-api'
 HELM_RELEASE_NAME = 'max-weather'
 HELM_CHART_PATH = './helm/max-weather'
-EKS_CLUSTER_NAME_STAGING = 'max-weather-staging-cluster'
+EKS_CLUSTER_NAME_STAGING = 'max-weather-production-cluster'
 EKS_CLUSTER_NAME_PRODUCTION = 'max-weather-production-cluster'
 ```
 

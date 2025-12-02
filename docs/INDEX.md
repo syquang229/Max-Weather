@@ -10,6 +10,7 @@ Welcome to the Max Weather Platform documentation!
 This comprehensive guide includes:
 - Quick Start Guide
 - Implementation Notes (how requirements are met)
+- Helm Chart Deployment
 - Assessment Reference
 - Complete Project Summary
 - Detailed Deployment Instructions
