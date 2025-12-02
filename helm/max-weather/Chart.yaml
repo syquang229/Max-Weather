@@ -1,0 +1,19 @@
+apiVersion: v2
+name: max-weather
+description: A Helm chart for Max Weather Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+icon: https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.png
+keywords:
+  - weather
+  - api
+  - aws
+  - eks
+  - kubernetes
+maintainers:
+  - name: Kwang Le
+    email: syquang229@gmail.com
+home: https://github.com/syquang229/Max-Weather
+sources:
+  - https://github.com/syquang229/Max-Weather

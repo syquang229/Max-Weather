@@ -1,0 +1,106 @@
+# Production environment values for Max Weather Helm Chart
+
+global:
+  aws:
+    region: us-east-1
+    accountId: ""
+  cluster:
+    name: max-weather-cluster
+  environment: production
+
+weatherApi:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: max-weather/weather-api
+    tag: latest  # Will be overridden by Jenkins
+    pullPolicy: Always
+  
+  serviceAccount:
+    create: true
+    name: weather-api
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::xxxxxxxxxx:role/max-weather-production-weather-api-role"
+  
+  env:
+    - name: ENVIRONMENT
+      value: "production"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: PORT
+      value: "8000"
+    - name: CLOUDWATCH_LOG_GROUP
+      value: "/aws/eks/max-weather-cluster/application"
+    - name: AWS_REGION
+      value: "us-east-1"
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Autoscaling - production settings
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+
+# Pod Disruption Budget - stricter for production
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: api.kwangle.weather
+      paths:
+        - path: /forecast(/|$)(.*)
+          pathType: Prefix
+        - path: /current(/|$)(.*)
+          pathType: Prefix
+        - path: /health(/|$)(.*)
+          pathType: Prefix
+        - path: /ready(/|$)(.*)
+          pathType: Prefix
+        - path: /metrics(/|$)(.*)
+          pathType: Prefix
+
+# Ingress Controller - reuse existing one
+ingressController:
+  enabled: false  # Already deployed in cluster
+
+# Fluent Bit - reuse existing one
+fluentBit:
+  enabled: false  # Already deployed in cluster
+
+namespaceOverride: "weather-production"

@@ -1,0 +1,24 @@
+{{- if .Values.weatherApi.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-api-service
+  namespace: {{ include "max-weather.namespace" . }}
+  labels:
+    {{- include "max-weather.labels" . | nindent 4 }}
+    app: weather-api
+  {{- with .Values.weatherApi.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.weatherApi.service.type }}
+  selector:
+    app: weather-api
+  ports:
+  - name: http
+    port: {{ .Values.weatherApi.service.port }}
+    targetPort: {{ .Values.weatherApi.service.targetPort }}
+    protocol: TCP
+  sessionAffinity: None
+{{- end }}

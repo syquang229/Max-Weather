@@ -1,0 +1,9 @@
+{{- if .Values.ingressController.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "max-weather.ingressController.namespace" . }}
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+{{- end }}

@@ -1,0 +1,178 @@
+{{- if .Values.fluentBit.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: {{ include "max-weather.fluentBit.namespace" . }}
+  labels:
+    k8s-app: fluent-bit
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush                     {{ .Values.fluentBit.config.service.flush }}
+        Grace                     {{ .Values.fluentBit.config.service.grace }}
+        Log_Level                 {{ .Values.fluentBit.config.service.logLevel }}
+        Daemon                    off
+        Parsers_File              parsers.conf
+        HTTP_Server               {{ .Values.fluentBit.config.service.httpServer }}
+        HTTP_Listen               0.0.0.0
+        HTTP_Port                 {{ .Values.fluentBit.config.service.httpPort }}
+        storage.path              /var/fluent-bit/state/flb-storage/
+        storage.sync              normal
+        storage.checksum          off
+        storage.max_chunks_up     128
+        storage.backlog.mem_limit 5M
+
+    @INCLUDE application-log.conf
+    @INCLUDE dataplane-log.conf
+    @INCLUDE host-log.conf
+
+  application-log.conf: |
+    [INPUT]
+        Name                tail
+        Tag                 application.*
+        Exclude_Path        /var/log/containers/cloudwatch-agent*, /var/log/containers/fluent-bit*, /var/log/containers/aws-node*, /var/log/containers/kube-proxy*
+        Path                /var/log/containers/*.log
+        multiline.parser    docker, cri
+        DB                  /var/fluent-bit/state/flb_container.db
+        Mem_Buf_Limit       50MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Rotate_Wait         30
+        storage.type        filesystem
+        Read_from_Head      Off
+
+    [FILTER]
+        Name                kubernetes
+        Match               application.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     application.var.log.containers.
+        Merge_Log           On
+        Keep_Log            On
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+        Labels              On
+        Annotations         Off
+        Buffer_Size         0
+
+    [FILTER]
+        Name                modify
+        Match               application.*
+        Add                 cluster_name {{ .Values.global.cluster.name }}
+        Add                 region {{ .Values.fluentBit.config.output.region }}
+
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               application.*
+        region              {{ .Values.fluentBit.config.output.region }}
+        log_group_name      {{ .Values.fluentBit.config.output.logGroupName }}
+        log_stream_prefix   ${NODE_NAME}-
+        auto_create_group   {{ .Values.fluentBit.config.output.autoCreateGroup }}
+        retry_limit         {{ .Values.fluentBit.config.output.retryLimit }}
+
+  dataplane-log.conf: |
+    [INPUT]
+        Name                systemd
+        Tag                 dataplane.systemd.*
+        Systemd_Filter      _SYSTEMD_UNIT=docker.service
+        Systemd_Filter      _SYSTEMD_UNIT=containerd.service
+        Systemd_Filter      _SYSTEMD_UNIT=kubelet.service
+        DB                  /var/fluent-bit/state/systemd.db
+        Path                /var/log/journal
+        Read_From_Tail      On
+
+    [FILTER]
+        Name                modify
+        Match               dataplane.systemd.*
+        Add                 cluster_name {{ .Values.global.cluster.name }}
+        Add                 region {{ .Values.fluentBit.config.output.region }}
+
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               dataplane.systemd.*
+        region              {{ .Values.fluentBit.config.output.region }}
+        log_group_name      {{ .Values.fluentBit.config.output.dataplaneLogGroup }}
+        log_stream_prefix   ${NODE_NAME}-
+        auto_create_group   {{ .Values.fluentBit.config.output.autoCreateGroup }}
+        retry_limit         {{ .Values.fluentBit.config.output.retryLimit }}
+
+  host-log.conf: |
+    [INPUT]
+        Name                tail
+        Tag                 host.dmesg
+        Path                /var/log/dmesg
+        Parser              syslog
+        DB                  /var/fluent-bit/state/flb_dmesg.db
+        Mem_Buf_Limit       5MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Read_from_Head      Off
+
+    [INPUT]
+        Name                tail
+        Tag                 host.messages
+        Path                /var/log/messages
+        Parser              syslog
+        DB                  /var/fluent-bit/state/flb_messages.db
+        Mem_Buf_Limit       5MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Read_from_Head      Off
+
+    [INPUT]
+        Name                tail
+        Tag                 host.secure
+        Path                /var/log/secure
+        Parser              syslog
+        DB                  /var/fluent-bit/state/flb_secure.db
+        Mem_Buf_Limit       5MB
+        Skip_Long_Lines     On
+        Refresh_Interval    10
+        Read_from_Head      Off
+
+    [FILTER]
+        Name                modify
+        Match               host.*
+        Add                 cluster_name {{ .Values.global.cluster.name }}
+        Add                 region {{ .Values.fluentBit.config.output.region }}
+
+    [OUTPUT]
+        Name                cloudwatch_logs
+        Match               host.*
+        region              {{ .Values.fluentBit.config.output.region }}
+        log_group_name      {{ .Values.fluentBit.config.output.hostLogGroup }}
+        log_stream_prefix   ${NODE_NAME}-
+        auto_create_group   {{ .Values.fluentBit.config.output.autoCreateGroup }}
+        retry_limit         {{ .Values.fluentBit.config.output.retryLimit }}
+
+  parsers.conf: |
+    [PARSER]
+        Name                docker
+        Format              json
+        Time_Key            time
+        Time_Format         %Y-%m-%dT%H:%M:%S.%LZ
+        Time_Keep           On
+
+    [PARSER]
+        Name                syslog
+        Format              regex
+        Regex               ^(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$
+        Time_Key            time
+        Time_Format         %b %d %H:%M:%S
+
+    [PARSER]
+        Name                container_firstline
+        Format              regex
+        Regex               (?<log>(?<="log":")\S(?!\.).*?)(?<!\\)".*(?<stream>(?<="stream":").*?)".*(?<time>\d{4}-\d{1,2}-\d{1,2}T\d{2}:\d{2}:\d{2}\.\w*).*(?=})
+        Time_Key            time
+        Time_Format         %Y-%m-%dT%H:%M:%S.%LZ
+
+    [PARSER]
+        Name                cwagent_firstline
+        Format              regex
+        Regex               (?<log>(?<="log":")\d{4}[\/-]\d{1,2}[\/-]\d{1,2}[ T]\d{2}:\d{2}:\d{2}(?!\.).*?)(?<!\\)".*(?<stream>(?<="stream":").*?)".*(?<time>\d{4}-\d{1,2}-\d{1,2}T\d{2}:\d{2}:\d{2}\.\w*).*(?=})
+        Time_Key            time
+        Time_Format         %Y-%m-%dT%H:%M:%S.%LZ
+{{- end }}

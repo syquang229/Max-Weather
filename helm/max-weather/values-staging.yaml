@@ -1,0 +1,82 @@
+# Staging environment values for Max Weather Helm Chart
+
+global:
+  aws:
+    region: us-east-1
+    accountId: ""  # Will be set via --set in Jenkins
+  cluster:
+    name: max-weather-cluster
+  environment: staging
+
+weatherApi:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    registry: ""  # Will be set via --set in Jenkins
+    repository: max-weather/weather-api
+    tag: latest  # Will be overridden by Jenkins
+    pullPolicy: Always
+  
+  serviceAccount:
+    create: true
+    name: weather-api
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::xxxxxxxxxx:role/max-weather-staging-weather-api-role"
+  
+  env:
+    - name: ENVIRONMENT
+      value: "staging"
+    - name: LOG_LEVEL
+      value: "debug"
+    - name: PORT
+      value: "8000"
+    - name: AWS_REGION
+      value: "us-east-1"
+  
+  resources:
+    limits:
+      cpu: 300m
+      memory: 384Mi
+    requests:
+      cpu: 100m
+      memory: 192Mi
+
+# No Autoscaling on Staging
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 85
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: staging.kwangle.weather
+      paths:
+        - path: /forecast(/|$)(.*)
+          pathType: Prefix
+        - path: /current(/|$)(.*)
+          pathType: Prefix
+        - path: /health(/|$)(.*)
+          pathType: Prefix
+        - path: /ready(/|$)(.*)
+          pathType: Prefix
+
+# Ingress Controller - reuse existing one
+ingressController:
+  enabled: false  # Already deployed
+
+# Fluent Bit - reuse existing one
+fluentBit:
+  enabled: false 
+
+namespaceOverride: "weather-staging"

@@ -1,0 +1,86 @@
+{{- if .Values.weatherApi.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-api
+  namespace: {{ include "max-weather.namespace" . }}
+  labels:
+    {{- include "max-weather.labels" . | nindent 4 }}
+    app: weather-api
+    version: v1
+spec:
+  replicas: {{ .Values.weatherApi.replicaCount }}
+  strategy:
+    {{- toYaml .Values.weatherApi.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      app: weather-api
+  template:
+    metadata:
+      labels:
+        app: weather-api
+        version: v1
+        {{- with .Values.weatherApi.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.weatherApi.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "max-weather.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.weatherApi.podSecurityContext | nindent 8 }}
+      
+      containers:
+      - name: weather-api
+        image: {{ include "max-weather.image" . }}
+        imagePullPolicy: {{ .Values.weatherApi.image.pullPolicy }}
+        
+        ports:
+        - name: http
+          containerPort: {{ .Values.weatherApi.service.targetPort }}
+          protocol: TCP
+        
+        {{- with .Values.weatherApi.env }}
+        env:
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        
+        resources:
+          {{- toYaml .Values.weatherApi.resources | nindent 10 }}
+        
+        livenessProbe:
+          {{- toYaml .Values.weatherApi.livenessProbe | nindent 10 }}
+        
+        readinessProbe:
+          {{- toYaml .Values.weatherApi.readinessProbe | nindent 10 }}
+        
+        startupProbe:
+          {{- toYaml .Values.weatherApi.startupProbe | nindent 10 }}
+        
+        securityContext:
+          {{- toYaml .Values.weatherApi.securityContext | nindent 10 }}
+        
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+      
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+      
+      {{- with .Values.weatherApi.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.weatherApi.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,292 @@
+# Default values for max-weather.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  aws:
+    region: us-east-1
+    accountId: ""
+  cluster:
+    name: max-weather-cluster
+  environment: production
+
+# Weather API application settings
+weatherApi:
+  enabled: true
+  replicaCount: 3
+  
+  image:
+    registry: "xxxxxxxxxx.dkr.ecr.us-east-1.amazonaws.com"
+    repository: max-weather/weather-api
+    tag: latest
+    pullPolicy: Always
+  
+  serviceAccount:
+    create: true
+    name: weather-api
+    annotations:
+      eks.amazonaws.com/role-arn: ""  # arn:aws:iam::<AWS_ACCOUNT_ID>:role/max-weather-production-weather-api-role
+  
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+  
+  podLabels:
+    app: weather-api
+    version: v1
+  
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+      - ALL
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+    annotations: {}
+  
+  env:
+    - name: ENVIRONMENT
+      value: "production"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: PORT
+      value: "8000"
+    - name: CLOUDWATCH_LOG_GROUP
+      value: "/aws/eks/max-weather-cluster/application"
+    - name: AWS_REGION
+      value: "us-east-1"
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 3
+  
+  startupProbe:
+    httpGet:
+      path: /startup
+      port: 8000
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 30
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  
+  affinity: {}
+  
+  tolerations:
+  - key: "node.kubernetes.io/not-ready"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 300
+  - key: "node.kubernetes.io/unreachable"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 300
+
+# Horizontal Pod Autoscaler settings
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Ingress settings
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/cors-expose-headers: "Content-Length,Content-Range"
+    nginx.ingress.kubernetes.io/custom-http-errors: "404,500,502,503"
+    nginx.ingress.kubernetes.io/health-check-path: "/health"
+    nginx.ingress.kubernetes.io/health-check-interval-seconds: "10"
+  hosts:
+    - host: internal.kwangle.weather
+      paths:
+        - path: /forecast(/|$)(.*)
+          pathType: Prefix
+        - path: /current(/|$)(.*)
+          pathType: Prefix
+        - path: /health(/|$)(.*)
+          pathType: Prefix
+        - path: /ready(/|$)(.*)
+          pathType: Prefix
+        - path: /metrics(/|$)(.*)
+          pathType: Prefix
+  tls: []
+
+# Nginx Ingress Controller
+ingressController:
+  enabled: true
+  namespace: ingress-nginx
+  replicaCount: 3
+  
+  image:
+    registry: registry.k8s.io
+    repository: ingress-nginx/controller
+    tag: v1.9.4
+    pullPolicy: IfNotPresent
+  
+  config:
+    allow-snippet-annotations: "true"
+    use-forwarded-headers: "true"
+    compute-full-forwarded-for: "true"
+    use-proxy-protocol: "false"
+    enable-real-ip: "true"
+    proxy-body-size: "20m"
+    proxy-connect-timeout: "10"
+    proxy-read-timeout: "120"
+    proxy-send-timeout: "120"
+  
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+      service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - ingress-nginx
+          topologyKey: kubernetes.io/hostname
+
+# Fluent Bit for CloudWatch logging
+fluentBit:
+  enabled: true
+  namespace: monitoring
+  
+  image:
+    registry: ""
+    repository: amazon/aws-for-fluent-bit
+    tag: 2.31.12
+    pullPolicy: Always
+  
+  serviceAccount:
+    create: true
+    name: fluent-bit
+    annotations: {}
+  
+  resources:
+    limits:
+      memory: 200Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+  
+  config:
+    service:
+      flush: 5
+      grace: 30
+      logLevel: info
+      httpServer: "On"
+      httpPort: 2020
+    
+    output:
+      region: us-east-1
+      logGroupName: /aws/eks/max-weather-cluster/application
+      dataplaneLogGroup: /aws/eks/max-weather-cluster/dataplane
+      hostLogGroup: /aws/eks/max-weather-cluster/host
+      autoCreateGroup: true
+      retryLimit: 2
+
+# Namespace configuration
+namespaceOverride: "weather"

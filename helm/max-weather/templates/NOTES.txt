@@ -1,0 +1,109 @@
+🎉 Max Weather has been deployed!
+
+Release Name: {{ .Release.Name }}
+Namespace: {{ include "max-weather.namespace" . }}
+
+📊 DEPLOYED COMPONENTS:
+{{- if .Values.weatherApi.enabled }}
+✅ Weather API Application ({{ .Values.weatherApi.replicaCount }} replicas)
+{{- end }}
+{{- if .Values.ingressController.enabled }}
+✅ Nginx Ingress Controller ({{ .Values.ingressController.replicaCount }} replicas)
+{{- end }}
+{{- if .Values.fluentBit.enabled }}
+✅ Fluent Bit Logging (DaemonSet)
+{{- end }}
+{{- if .Values.autoscaling.enabled }}
+✅ Horizontal Pod Autoscaler (min: {{ .Values.autoscaling.minReplicas }}, max: {{ .Values.autoscaling.maxReplicas }})
+{{- end }}
+{{- if .Values.podDisruptionBudget.enabled }}
+✅ Pod Disruption Budget (minAvailable: {{ .Values.podDisruptionBudget.minAvailable }})
+{{- end }}
+
+🔍 CHECK DEPLOYMENT STATUS:
+
+  # Check all pods
+  kubectl get pods -n {{ include "max-weather.namespace" . }}
+  
+  {{- if .Values.ingressController.enabled }}
+  # Check Ingress Controller
+  kubectl get pods -n {{ include "max-weather.ingressController.namespace" . }}
+  kubectl get svc -n {{ include "max-weather.ingressController.namespace" . }}
+  {{- end }}
+  
+  {{- if .Values.fluentBit.enabled }}
+  # Check Fluent Bit
+  kubectl get pods -n {{ include "max-weather.fluentBit.namespace" . }}
+  {{- end }}
+  
+  {{- if .Values.autoscaling.enabled }}
+  # Check Autoscaling
+  kubectl get hpa -n {{ include "max-weather.namespace" . }}
+  {{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+🌐 ACCESS THE APPLICATION:
+
+  # Get the Load Balancer DNS (may take a few minutes)
+  kubectl get svc ingress-nginx-controller -n {{ include "max-weather.ingressController.namespace" . }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+  
+  # Test the API (replace <NLB-DNS> with actual DNS)
+  {{- range .Values.ingress.hosts }}
+  curl -H "Host: {{ .host }}" http://<NLB-DNS>/health
+  {{- end }}
+{{- end }}
+
+📋 USEFUL COMMANDS:
+
+  # View logs
+  kubectl logs -l app=weather-api -n {{ include "max-weather.namespace" . }} --tail=100 -f
+  
+  # Check resource usage
+  kubectl top pods -n {{ include "max-weather.namespace" . }}
+  
+  # Scale manually (overrides HPA)
+  kubectl scale deployment weather-api -n {{ include "max-weather.namespace" . }} --replicas=5
+  
+  # Update the release
+  helm upgrade {{ .Release.Name }} ./helm/max-weather -f values-production.yaml
+  
+  # Rollback to previous version
+  helm rollback {{ .Release.Name }}
+
+{{- if .Values.weatherApi.enabled }}
+
+⚙️  WEATHER API ENDPOINTS:
+  {{- range .Values.ingress.hosts }}
+  - Health Check:  http://{{ .host }}/health
+  - Current:       http://{{ .host }}/current?city=<city>
+  - Forecast:      http://{{ .host }}/forecast?city=<city>
+  {{- end }}
+{{- end }}
+
+{{- if not .Values.global.aws.accountId }}
+
+⚠️  WARNING: AWS Account ID not set!
+   Update your values file with:
+   global.aws.accountId: "<YOUR_AWS_ACCOUNT_ID>"
+{{- end }}
+
+{{- if not .Values.weatherApi.serviceAccount.annotations }}
+
+⚠️  WARNING: Service Account IAM role not configured!
+   Update your values file with:
+   weatherApi.serviceAccount.annotations:
+     eks.amazonaws.com/role-arn: "arn:aws:iam::xxxxxxxxx:role/<ROLE>"
+{{- end }}
+
+📚 DOCUMENTATION:
+   See: helm/max-weather/README.md
+   
+🎯 NEXT STEPS:
+   1. Verify all pods are running
+   2. Get the NLB DNS name
+   3. Configure API Gateway to point to NLB
+   4. Test the API endpoints
+   5. Set up monitoring and alerts
+
+For more information, visit: https://github.com/syquang229/Max-Weather
