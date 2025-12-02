@@ -1,8 +1,3 @@
-"""
-Weather API Application
-Production-ready Flask application for weather forecasting
-Integrates with OpenWeatherMap API
-"""
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import logging
