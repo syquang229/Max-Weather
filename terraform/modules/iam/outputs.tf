@@ -17,3 +17,9 @@ output "external_dns_role_arn" {
   description = "ARN of the External DNS IAM role"
   value       = aws_iam_role.external_dns.arn
 }
+
+output "ebs_csi_driver_role_arn" {
+  description = "ARN of the EBS CSI Driver IAM role"
+  value       = aws_iam_role.ebs_csi_driver.arn
+}
+

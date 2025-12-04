@@ -343,7 +343,7 @@ stage('API Tests') {
 ## Support
 
 For issues or questions:
-- Check CloudWatch logs: `/aws/eks/max-weather-production-cluster/application`
+- Check CloudWatch logs: `/aws/eks/test/max-weather-production-cluster/application`
 - Review API Gateway logs
 - Contact Kwang Le
 

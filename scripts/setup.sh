@@ -106,8 +106,8 @@ configure_aws() {
 create_terraform_backend() {
     print_header "Creating Terraform Backend (S3 + DynamoDB)"
     
-    BUCKET_NAME="max-weather-terraform-state"
-    TABLE_NAME="max-weather-terraform-locks"
+    BUCKET_NAME="max-weather-test-state"
+    TABLE_NAME="max-weather-test-locks"
     REGION="us-east-1"
     
     # Create S3 bucket

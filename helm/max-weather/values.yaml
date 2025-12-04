@@ -282,9 +282,9 @@ fluentBit:
     
     output:
       region: us-east-1
-      logGroupName: /aws/eks/max-weather-production-cluster/application
-      dataplaneLogGroup: /aws/eks/max-weather-production-cluster/dataplane
-      hostLogGroup: /aws/eks/max-weather-production-cluster/host
+      logGroupName: /aws/eks/test/max-weather-production-cluster/application
+      dataplaneLogGroup: /aws/eks/test/max-weather-production-cluster/dataplane
+      hostLogGroup: /aws/eks/test/max-weather-production-cluster/host
       autoCreateGroup: true
       retryLimit: 2
 

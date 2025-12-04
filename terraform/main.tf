@@ -17,11 +17,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "max-weather-terraform-state"
+    bucket         = "max-weather-test-state"
     key            = "production/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "max-weather-terraform-locks"
+    dynamodb_table = "max-weather-test-locks"
   }
 }
 

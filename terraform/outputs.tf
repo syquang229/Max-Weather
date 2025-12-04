@@ -132,6 +132,11 @@ output "aws_load_balancer_controller_role_arn" {
   value       = module.iam.aws_load_balancer_controller_role_arn
 }
 
+output "ebs_csi_driver_role_arn" {
+  description = "IAM role ARN for EBS CSI Driver"
+  value       = module.iam.ebs_csi_driver_role_arn
+}
+
 # Deployment Information
 output "deployment_instructions" {
   description = "Instructions for deploying the application"
@@ -142,20 +147,21 @@ output "deployment_instructions" {
     ============================================
     
     1. Configure kubectl:
-       ${self.configure_kubectl}
+       aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}
     
     2. Verify cluster access:
        kubectl cluster-info
        kubectl get nodes
     
-    3. Deploy Kubernetes resources:
-       cd ../kubernetes
-       kubectl apply -f ingress-controller.yaml
-       kubectl apply -f deployment.yaml
-       kubectl apply -f service.yaml
-       kubectl apply -f hpa.yaml
-       kubectl apply -f ingress.yaml
-       kubectl apply -f fluent-bit/
+    3. Deploy with Helm (Production):
+       cd ../helm
+       helm lint max-weather/
+       helm upgrade --install max-weather-production ./max-weather \
+         --namespace weather-production \
+         --values ./max-weather/values-production.yaml \
+         --create-namespace \
+         --atomic \
+         --timeout 10m
     
     4. Build and push Docker image:
        cd ../application/weather-api
@@ -164,12 +170,17 @@ output "deployment_instructions" {
        aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_urls["weather-api"]}
        docker push ${module.ecr.repository_urls["weather-api"]}:latest
     
-    5. Update deployment with new image:
-       kubectl set image deployment/weather-api weather-api=${module.ecr.repository_urls["weather-api"]}:latest
+    5. Update deployment with Helm:
+       helm upgrade max-weather-production ./helm/max-weather \
+         --namespace weather-production \
+         --values ./helm/max-weather/values-production.yaml \
+         --set weatherApi.image.tag=latest \
+         --atomic
     
     6. Check deployment status:
-       kubectl rollout status deployment/weather-api
-       kubectl get pods -l app=weather-api
+       kubectl rollout status deployment/weather-api -n weather-production
+       kubectl get pods -l app=weather-api -n weather-production
+       helm status max-weather-production -n weather-production
     
     7. Get LoadBalancer URL:
        kubectl get svc -n ingress-nginx ingress-nginx-controller
@@ -178,7 +189,7 @@ output "deployment_instructions" {
        ${module.api_gateway.api_endpoint}
     
     9. View logs in CloudWatch:
-       ${self.cloudwatch_dashboard_url}
+       https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${module.cloudwatch.dashboard_name}
     
     ============================================
   EOT

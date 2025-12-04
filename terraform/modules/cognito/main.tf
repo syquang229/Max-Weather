@@ -65,7 +65,7 @@ resource "aws_cognito_user_pool_client" "api_client" {
 
   generate_secret = true
 
-  allowed_oauth_flows                  = ["code", "implicit", "client_credentials"]
+  allowed_oauth_flows                  = ["code", "implicit"]
   allowed_oauth_scopes                 = ["email", "openid", "profile", "aws.cognito.signin.user.admin"]
   allowed_oauth_flows_user_pool_client = true
 

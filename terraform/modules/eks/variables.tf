@@ -49,6 +49,12 @@ variable "node_groups" {
   }))
 }
 
+variable "ebs_csi_driver_role_arn" {
+  description = "IAM role ARN for EBS CSI Driver"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

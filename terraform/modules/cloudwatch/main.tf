@@ -13,7 +13,7 @@ terraform {
 
 # Log Groups
 resource "aws_cloudwatch_log_group" "application" {
-  name              = "/aws/eks/${var.cluster_name}/application"
+  name              = "/aws/eks/test/${var.cluster_name}/application"
   retention_in_days = var.log_retention_days
 
   tags = merge(
@@ -25,7 +25,7 @@ resource "aws_cloudwatch_log_group" "application" {
 }
 
 resource "aws_cloudwatch_log_group" "cluster" {
-  name              = "/aws/eks/${var.cluster_name}/cluster"
+  name              = "/aws/eks/test/${var.cluster_name}/cluster"
   retention_in_days = var.log_retention_days
 
   tags = merge(
