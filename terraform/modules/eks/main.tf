@@ -12,6 +12,14 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.11"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
   }
 }
 
@@ -280,13 +288,10 @@ resource "aws_eks_addon" "coredns" {
 resource "aws_eks_addon" "kube_proxy" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "kube-proxy"
-
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
-
   tags = var.tags
 }
-
 resource "aws_eks_addon" "ebs_csi_driver" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "aws-ebs-csi-driver"
@@ -302,4 +307,67 @@ resource "aws_eks_addon" "ebs_csi_driver" {
     aws_eks_node_group.main
   ]
 }
+
+# Nginx Ingress Controller Helm Chart
+resource "helm_release" "nginx_ingress" {
+  count = var.install_nginx_ingress ? 1 : 0
+
+  name       = "ingress-nginx"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart      = "ingress-nginx"
+  namespace  = "ingress-nginx"
+  version    = var.nginx_ingress_version
+
+  create_namespace = true
+
+  set {
+    name  = "controller.service.type"
+    value = "LoadBalancer"
+  }
+
+  set {
+    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
+    value = "nlb"
+  }
+
+  set {
+    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-cross-zone-load-balancing-enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-backend-protocol"
+    value = "tcp"
+  }
+
+  # Optional: Make it internal
+  dynamic "set" {
+    for_each = var.nginx_ingress_internal ? [1] : []
+    content {
+      name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-internal"
+      value = "true"
+    }
+  }
+
+  set {
+    name  = "controller.metrics.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "controller.podAnnotations.prometheus\\.io/scrape"
+    value = "true"
+  }
+
+  set {
+    name  = "controller.podAnnotations.prometheus\\.io/port"
+    value = "10254"
+  }
+
+  depends_on = [
+    aws_eks_node_group.main,
+    aws_eks_addon.vpc_cni
+  ]
+}
+
 

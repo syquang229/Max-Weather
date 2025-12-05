@@ -130,6 +130,13 @@ module "eks" {
   cluster_endpoint_public_access  = var.eks_cluster_endpoint_public_access
   cluster_endpoint_private_access = true
 
+  # Install Nginx Ingress Controller
+  install_nginx_ingress  = true
+  nginx_ingress_internal = false # Set to true for internal NLB
+
+  # EBS CSI Driver IAM role - will be empty on first apply, update on second apply
+  ebs_csi_driver_role_arn = try(module.iam.ebs_csi_driver_role_arn, "")
+
   tags = local.common_tags
 }
 
@@ -163,20 +170,51 @@ module "cognito" {
   tags = local.common_tags
 }
 
+# Get NLB DNS name from Nginx Ingress service (created by Helm)
+data "kubernetes_service" "nginx_ingress" {
+  metadata {
+    name      = "ingress-nginx-controller"
+    namespace = "ingress-nginx"
+  }
+
+  depends_on = [module.eks]
+}
+
+# Get NLB ARN from AWS using the DNS name from Kubernetes service
+# Extract the NLB name from the hostname (format: <nlb-name>-<random>.elb.<region>.amazonaws.com)
+locals {
+  nlb_hostname = try(data.kubernetes_service.nginx_ingress.status[0].load_balancer[0].ingress[0].hostname, "")
+  nlb_name     = local.nlb_hostname != "" ? split("-", split(".", local.nlb_hostname)[0])[0] : ""
+}
+
+data "aws_lb" "nginx_ingress_nlb" {
+  count = local.nlb_hostname != "" ? 1 : 0
+  name  = local.nlb_name
+
+  depends_on = [data.kubernetes_service.nginx_ingress]
+}
+
 # API Gateway Module
+# Note: VPC Link uses NLB ARN from Nginx Ingress
 module "api_gateway" {
   source = "./modules/api-gateway"
 
   project_name = var.project_name
   environment  = var.environment
 
-  vpc_link_target_arns = [module.eks.nlb_arn]
+  # Pass NLB ARN for VPC Link (only if NLB exists)
+  vpc_link_target_arns = local.nlb_hostname != "" ? [data.aws_lb.nginx_ingress_nlb[0].arn] : []
+
+  # Get NLB DNS name from Nginx Ingress LoadBalancer service
+  nlb_dns_name = local.nlb_hostname
 
   cognito_user_pool_arn = module.cognito.user_pool_arn
 
   stage_name = var.api_stage_name
 
   tags = local.common_tags
+
+  depends_on = [module.eks, data.aws_lb.nginx_ingress_nlb]
 }
 
 # IAM Module for IRSA (IAM Roles for Service Accounts)

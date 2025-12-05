@@ -17,7 +17,7 @@ weatherApi:
   replicaCount: 3
   
   image:
-    registry: "xxxxxxxxxx.dkr.ecr.us-east-1.amazonaws.com"
+    registry: "379245766915.dkr.ecr.us-east-1.amazonaws.com"
     repository: max-weather/weather-api
     tag: latest
     pullPolicy: Always
@@ -199,7 +199,7 @@ ingress:
 
 # Nginx Ingress Controller
 ingressController:
-  enabled: true
+  enabled: false
   namespace: ingress-nginx
   replicaCount: 3
   

@@ -53,7 +53,13 @@ output "oidc_provider_url" {
   value       = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }
 
-output "nlb_arn" {
-  description = "ARN of the Network Load Balancer (placeholder - will be created by Nginx Ingress)"
-  value       = ""
+output "nginx_ingress_installed" {
+  description = "Whether Nginx Ingress Controller is installed"
+  value       = var.install_nginx_ingress
 }
+
+output "nginx_ingress_namespace" {
+  description = "Namespace where Nginx Ingress is installed"
+  value       = var.install_nginx_ingress ? "ingress-nginx" : ""
+}
+

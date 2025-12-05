@@ -11,6 +11,34 @@ terraform {
   }
 }
 
+# IAM Role for API Gateway CloudWatch Logging
+resource "aws_iam_role" "api_gateway_cloudwatch" {
+  name = "${var.project_name}-${var.environment}-api-gateway-cloudwatch-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "apigateway.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
+  role       = aws_iam_role.api_gateway_cloudwatch.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+# API Gateway Account Settings (for CloudWatch Logs)
+resource "aws_api_gateway_account" "main" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch.arn
+}
+
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "main" {
   name        = "${var.project_name}-${var.environment}-api"
@@ -24,7 +52,10 @@ resource "aws_api_gateway_rest_api" "main" {
 }
 
 # VPC Link for private integration
+# Note: This will be created after NLB is provisioned by Kubernetes
 resource "aws_api_gateway_vpc_link" "main" {
+  count = length(var.vpc_link_target_arns) > 0 ? 1 : 0
+
   name        = "${var.project_name}-${var.environment}-vpc-link"
   description = "VPC Link to internal NLB"
   target_arns = var.vpc_link_target_arns
@@ -78,13 +109,20 @@ resource "aws_api_gateway_integration" "forecast_get" {
   resource_id = aws_api_gateway_resource.forecast.id
   http_method = aws_api_gateway_method.forecast_get.http_method
 
-  type                    = "HTTP_PROXY"
-  uri                     = "http://${var.nlb_dns_name}/forecast"
-  integration_http_method = "GET"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
+  # Use MOCK integration if no backend configured, otherwise HTTP_PROXY
+  type                    = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? "MOCK" : "HTTP_PROXY"
+  uri                     = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? "" : "http://${var.nlb_dns_name}/forecast"
+  integration_http_method = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? null : "GET"
+  connection_type         = length(aws_api_gateway_vpc_link.main) > 0 ? "VPC_LINK" : "INTERNET"
+  connection_id           = length(aws_api_gateway_vpc_link.main) > 0 ? aws_api_gateway_vpc_link.main[0].id : null
 
-  request_parameters = {
+  request_templates = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  } : null
+
+  request_parameters = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? null : {
     "integration.request.querystring.location" = "method.request.querystring.location"
   }
 }
@@ -107,13 +145,20 @@ resource "aws_api_gateway_integration" "current_get" {
   resource_id = aws_api_gateway_resource.current.id
   http_method = aws_api_gateway_method.current_get.http_method
 
-  type                    = "HTTP_PROXY"
-  uri                     = "http://${var.nlb_dns_name}/current"
-  integration_http_method = "GET"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
+  # Use MOCK integration if no backend configured, otherwise HTTP_PROXY
+  type                    = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? "MOCK" : "HTTP_PROXY"
+  uri                     = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? "" : "http://${var.nlb_dns_name}/current"
+  integration_http_method = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? null : "GET"
+  connection_type         = length(aws_api_gateway_vpc_link.main) > 0 ? "VPC_LINK" : "INTERNET"
+  connection_id           = length(aws_api_gateway_vpc_link.main) > 0 ? aws_api_gateway_vpc_link.main[0].id : null
 
-  request_parameters = {
+  request_templates = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  } : null
+
+  request_parameters = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? null : {
     "integration.request.querystring.location" = "method.request.querystring.location"
   }
 }
@@ -131,11 +176,18 @@ resource "aws_api_gateway_integration" "health_get" {
   resource_id = aws_api_gateway_resource.health.id
   http_method = aws_api_gateway_method.health_get.http_method
 
-  type                    = "HTTP_PROXY"
-  uri                     = "http://${var.nlb_dns_name}/health"
-  integration_http_method = "GET"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
+  # Use MOCK integration if no backend configured, otherwise HTTP_PROXY
+  type                    = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? "MOCK" : "HTTP_PROXY"
+  uri                     = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? "" : "http://${var.nlb_dns_name}/health"
+  integration_http_method = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? null : "GET"
+  connection_type         = length(aws_api_gateway_vpc_link.main) > 0 ? "VPC_LINK" : "INTERNET"
+  connection_id           = length(aws_api_gateway_vpc_link.main) > 0 ? aws_api_gateway_vpc_link.main[0].id : null
+
+  request_templates = var.nlb_dns_name == "" || var.nlb_dns_name == "internal-nlb.local" ? {
+    "application/json" = jsonencode({
+      statusCode = 200
+    })
+  } : null
 }
 
 # API Gateway Deployment
@@ -190,6 +242,10 @@ resource "aws_api_gateway_stage" "main" {
   }
 
   tags = var.tags
+
+  depends_on = [
+    aws_api_gateway_account.main
+  ]
 }
 
 # CloudWatch Log Group for API Gateway

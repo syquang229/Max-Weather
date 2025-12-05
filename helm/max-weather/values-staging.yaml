@@ -13,7 +13,6 @@ weatherApi:
   replicaCount: 1
   
   image:
-    registry: ""  # Will be set via --set in Jenkins
     repository: max-weather/weather-api
     tag: latest  # Will be overridden by Jenkins
     pullPolicy: Always

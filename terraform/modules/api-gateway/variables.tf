@@ -25,9 +25,9 @@ variable "stage_name" {
 }
 
 variable "nlb_dns_name" {
-  description = "DNS name of the Network Load Balancer"
+  description = "DNS name of the Network Load Balancer (leave empty to use MOCK integration)"
   type        = string
-  default     = "internal-nlb.local" # Placeholder - will be updated after NLB creation
+  default     = "" # Empty = MOCK integration, set to NLB DNS after creation
 }
 
 variable "tags" {

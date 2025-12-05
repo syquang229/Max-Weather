@@ -19,8 +19,8 @@ output "stage_name" {
 }
 
 output "vpc_link_id" {
-  description = "VPC Link ID"
-  value       = aws_api_gateway_vpc_link.main.id
+  description = "VPC Link ID (empty if not created)"
+  value       = length(aws_api_gateway_vpc_link.main) > 0 ? aws_api_gateway_vpc_link.main[0].id : ""
 }
 
 output "authorizer_id" {

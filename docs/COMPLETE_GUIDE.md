@@ -1187,7 +1187,7 @@ aws logs tail /aws/lambda/max-weather-authorizer --follow
 aws logs tail /aws/apigateway/max-weather-api --follow
 
 # CloudWatch application logs
-aws logs tail /aws/eks/max-weather-test-cluster/application --follow
+aws logs tail /aws/eks/test/max-weather-production-cluster/application --follow
 ```
 
 ## 🎯 Assessment Criteria Met
@@ -1461,9 +1461,9 @@ GET  /cities           - Available cities (requires auth token)
 
 ### 6. CloudWatch Logging ✓
 - **Log Groups**:
-  - `/aws/eks/max-weather-test-cluster/application`
-  - `/aws/eks/max-weather-test-cluster/dataplane`
-  - `/aws/eks/max-weather-test-cluster/host`
+  - `/aws/eks/test/max-weather-production-cluster/application`
+  - `/aws/eks/test/max-weather-production-cluster/dataplane`
+  - `/aws/eks/test/max-weather-production-cluster/host`
   - `/aws/apigateway/max-weather`
 
 - **Fluent Bit DaemonSet**: Forwards all container logs
@@ -1695,7 +1695,7 @@ This is a demonstration project. For production use:
 kubectl logs -f deployment/weather-api
 
 # CloudWatch logs
-aws logs tail /aws/eks/max-weather-test-cluster/application --follow
+aws logs tail /aws/eks/test/max-weather-production-cluster/application --follow
 ```
 
 ### Scaling Manually
@@ -2453,7 +2453,7 @@ open "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards
 kubectl logs -f deployment/weather-api
 
 # Via CloudWatch
-aws logs tail /aws/eks/max-weather-test-cluster/application --follow
+aws logs tail /aws/eks/test/max-weather-production-cluster/application --follow
 
 # View specific pod
 POD=$(kubectl get pod -l app=weather-api -o jsonpath='{.items[0].metadata.name}')
@@ -2590,7 +2590,7 @@ terraform state pull > backup.tfstate
 ```
 
 ### Getting Help
-- Check CloudWatch Logs: `/aws/eks/max-weather-test-cluster/`
+- Check CloudWatch Logs: `/aws/eks/test/max-weather-production-cluster/`
 - Review Kubernetes events: `kubectl get events`
 - Check AWS Console for resource status
 - Review Terraform state: `terraform state list`

@@ -55,8 +55,27 @@ variable "ebs_csi_driver_role_arn" {
   default     = ""
 }
 
+variable "install_nginx_ingress" {
+  description = "Install Nginx Ingress Controller via Helm"
+  type        = bool
+  default     = true
+}
+
+variable "nginx_ingress_version" {
+  description = "Nginx Ingress Controller Helm chart version"
+  type        = string
+  default     = "4.8.3"
+}
+
+variable "nginx_ingress_internal" {
+  description = "Make Nginx Ingress internal (vs internet-facing)"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
   default     = {}
 }
+

@@ -181,7 +181,7 @@ resource "aws_flow_log" "main" {
 }
 
 resource "aws_cloudwatch_log_group" "vpc_flow_log" {
-  name              = "/aws/vpc/${var.project_name}-${var.environment}"
+  name              = "/aws/vpc/test/${var.project_name}-${var.environment}"
   retention_in_days = 30
 
   tags = var.tags

@@ -116,6 +116,21 @@ output "api_gateway_stage_name" {
   value       = module.api_gateway.stage_name
 }
 
+output "api_gateway_vpc_link_id" {
+  description = "API Gateway VPC Link ID"
+  value       = module.api_gateway.vpc_link_id
+}
+
+output "nginx_ingress_nlb_arn" {
+  description = "Nginx Ingress NLB ARN"
+  value       = length(data.aws_lb.nginx_ingress_nlb) > 0 ? data.aws_lb.nginx_ingress_nlb[0].arn : ""
+}
+
+output "nginx_ingress_nlb_dns" {
+  description = "Nginx Ingress NLB DNS name"
+  value       = local.nlb_hostname
+}
+
 # IAM Outputs
 output "fluent_bit_role_arn" {
   description = "IAM role ARN for Fluent Bit"
